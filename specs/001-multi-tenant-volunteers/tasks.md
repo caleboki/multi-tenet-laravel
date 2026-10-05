@@ -545,7 +545,7 @@ one fails.
 
 ### Tests for User Story 5 (write first, must fail)
 
-- [ ] T101 [P] [US5] Write tests/Feature/Roster/UpdateMemberTest.php for `orgs.members.update`:
+- [x] T101 [P] [US5] Write tests/Feature/Roster/UpdateMemberTest.php for `orgs.members.update`:
   - Deactivate → status `inactive`, and that member then gets 404 on `orgs.show`.
   - Reactivate → access returns, and `joined_at` is unchanged.
   - Promote → the member gets 200 on `orgs.members.index`.
@@ -554,32 +554,41 @@ one fails.
   - Setting `status` to `pending` or `left` fails validation.
   - A volunteer gets 403, and another organization's membership gets 404.
   (FR-011, FR-017, FR-018, FR-038)
-- [ ] T102 [P] [US5] Write tests/Feature/Membership/LeaveOrganizationTest.php: `orgs.membership.destroy` sets the member's status to `left` and redirects to `dashboard`. The last active admin is refused. A member who left can request again through the sign-up link (FR-024).
-- [ ] T103 [P] [US5] Write tests/Feature/Organizations/OrganizationSettingsTest.php:
+  *Done: also covers an administrator stepping down while another remains, requiring a role or status, and a 409 for join requests and members who left. Only active administrators count: an inactive one doesn't keep the organization covered.*
+- [x] T102 [P] [US5] Write tests/Feature/Membership/LeaveOrganizationTest.php: `orgs.membership.destroy` sets the member's status to `left` and redirects to `dashboard`. The last active admin is refused. A member who left can request again through the sign-up link (FR-024).
+  *Done: also covers an administrator leaving while another remains, and the Leave button on the organization home.*
+- [x] T103 [P] [US5] Write tests/Feature/Organizations/OrganizationSettingsTest.php:
   - `orgs.settings.update` changes the name (ignoring case, unique except its own row) and the contact email, while the slug stays the same.
   - Toggling `self_signup_enabled` off makes `join.show` say "not accepting sign-ups".
   - `orgs.signup-link.store` replaces the token, and the old link says "no longer valid".
   - A volunteer gets 403.
   (FR-008, FR-029)
+  *Done: also covers keeping the organization's own name in a different letter case. The sign-up link is opened by a signed-in non-member, because an active member would be redirected to the organization.*
 
 ### Implementation for User Story 5
 
-- [ ] T104 [US5] Create app/Actions/Memberships/ChangeMembership.php with `handle(Membership, ?MembershipRole $role, ?MembershipStatus $status): Membership`. Inside `DB::transaction` it:
+- [x] T104 [US5] Create app/Actions/Memberships/ChangeMembership.php with `handle(Membership, ?MembershipRole $role, ?MembershipStatus $status): Membership`. Inside `DB::transaction` it:
   - locks the organization row with `lockForUpdate()`;
   - if the change would remove an active Administrator, counts the *other* active Administrators and throws `ValidationException` when there are none;
   - applies the change.
   Document the lock in PHPDoc (research R8).
-- [ ] T105 [P] [US5] Create the form requests:
+  *Done: the membership is re-read under the lock. Changes are refused with 409 unless the membership is active or inactive, so the update route can't approve join requests or bring back people who left. The error key is `membership`.*
+- [x] T105 [P] [US5] Create the form requests:
   - app/Http/Requests/UpdateMemberRequest.php: `role` as an enum; `status` as `Rule::enum(MembershipStatus::class)->only([Active, Inactive])`; at least one of them required.
   - app/Http/Requests/UpdateOrganizationSettingsRequest.php: `name` with `UniqueOrganizationName` ignoring the current organization, `contact_email`, `self_signup_enabled` boolean.
-- [ ] T106 [US5] Add `update` to app/Http/Controllers/Org/MemberController.php (it calls `ChangeMembership`), and register `orgs.members.update` (PATCH) in routes/web.php.
-- [ ] T107 [US5] Create app/Http/Controllers/Org/MembershipController.php with `destroy` (leave via `ChangeMembership` with status `Left`), and register `orgs.membership.destroy` (DELETE) in routes/web.php.
-- [ ] T108 [US5] Add `update` to app/Http/Controllers/Org/SettingsController.php. Create app/Http/Controllers/Org/SignupLinkController.php with `store` (calls `regenerateSignupToken()`). Register `orgs.settings.update` (PATCH) and `orgs.signup-link.store` (POST) in routes/web.php.
-- [ ] T109 [P] [US5] Update the views:
+  *Done: contact emails are lowercased before validation. `self_signup_enabled` is required, and the form sends a hidden 0 before the checkbox.*
+- [x] T106 [US5] Add `update` to app/Http/Controllers/Org/MemberController.php (it calls `ChangeMembership`), and register `orgs.members.update` (PATCH) in routes/web.php.
+  *Done: redirects to the member page with "Saved the changes to {name}."*
+- [x] T107 [US5] Create app/Http/Controllers/Org/MembershipController.php with `destroy` (leave via `ChangeMembership` with status `Left`), and register `orgs.membership.destroy` (DELETE) in routes/web.php.
+- [x] T108 [US5] Add `update` to app/Http/Controllers/Org/SettingsController.php. Create app/Http/Controllers/Org/SignupLinkController.php with `store` (calls `regenerateSignupToken()`). Register `orgs.settings.update` (PATCH) and `orgs.signup-link.store` (POST) in routes/web.php.
+  *Done: settings are saved from the validated fields only, so the slug can't change. `SignupLinkController@store` redirects to settings.*
+- [x] T109 [P] [US5] Update the views:
   - resources/views/orgs/members/show.blade.php: role select and activate/deactivate forms.
   - resources/views/orgs/settings/edit.blade.php: name, contact email, self sign-up toggle, regenerate button.
   - resources/views/orgs/show.blade.php: "Leave organization" form button with an explanatory sentence, without a JS confirm dialog.
-- [ ] T110 [US5] Run `./vendor/bin/sail artisan test --compact tests/Feature/Roster tests/Feature/Membership tests/Feature/Organizations tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: added resources/views/components/error-alert.blade.php for the `membership` error, used on the organization home, the member page and the join page. The member page shows controls only for active or inactive members and points join requests to their page. Settings warns when sign-ups are off. Also changed two test assertions to match the full `href="…"`, because the new `…/membership` URL starts with the roster URL `…/members`.*
+- [x] T110 [US5] Run `./vendor/bin/sail artisan test --compact tests/Feature/Roster tests/Feature/Membership tests/Feature/Organizations tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: 248 tests pass in the full suite. Mutation checks confirmed the tests catch a missing last-administrator check, counting inactive administrators, changing join requests or left members, treating the organization's own name as taken, allowing `pending` as a status, and changing the slug on rename. Quickstart US5 steps 1–5, and US4 step 4, pass against the Sail app. Every change was reversed afterwards, and the sign-up link steps used Tool Library.*
 
 **Checkpoint**: US1 to US5 all work on their own (quickstart.md US5).
 

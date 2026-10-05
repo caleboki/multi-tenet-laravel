@@ -73,7 +73,7 @@ class OperatorAccessTest extends TestCase
         $response->assertSeeText('Food Bank North');
         $response->assertDontSeeText('Victor Volunteer');
         $response->assertDontSeeText('victor@example.test');
-        $response->assertDontSee(route('orgs.members.index', $organization));
+        $response->assertDontSee('href="'.route('orgs.members.index', $organization).'"', false);
     }
 
     public function test_operator_cannot_open_an_organizations_roster_without_a_membership(): void

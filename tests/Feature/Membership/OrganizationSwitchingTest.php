@@ -156,10 +156,12 @@ class OrganizationSwitchingTest extends TestCase
 
         $response->assertSeeText("Your role: {$role}");
 
+        $rosterLink = 'href="'.route('orgs.members.index', $organization).'"';
+
         if ($seesRoster) {
-            $response->assertSee(route('orgs.members.index', $organization));
+            $response->assertSee($rosterLink, false);
         } else {
-            $response->assertDontSee(route('orgs.members.index', $organization));
+            $response->assertDontSee($rosterLink, false);
         }
     }
 

@@ -10,6 +10,8 @@
         </p>
     </div>
 
+    <x-error-alert field="membership" />
+
     @can('manageMembers', $organization)
         <nav aria-label="Organization administration" class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <h2 class="text-sm font-semibold">Administration</h2>
@@ -37,4 +39,17 @@
             </ul>
         </nav>
     @endcan
+
+    <section aria-labelledby="leave-heading" class="flex flex-col gap-2 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <h2 id="leave-heading" class="text-sm font-semibold">Leave {{ $organization->name }}</h2>
+        <p class="text-sm text-zinc-600 dark:text-zinc-400">
+            Leaving ends your access to this organization straight away. You can ask to join again later through its sign-up link.
+        </p>
+
+        <form method="POST" action="{{ route('orgs.membership.destroy', $organization) }}">
+            @csrf
+            @method('DELETE')
+            <x-button variant="secondary">Leave organization</x-button>
+        </form>
+    </section>
 @endsection

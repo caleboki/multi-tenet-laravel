@@ -9,8 +9,10 @@ use App\Http\Controllers\Operator\OrganizationSuspensionController;
 use App\Http\Controllers\Org\InvitationController;
 use App\Http\Controllers\Org\JoinRequestController;
 use App\Http\Controllers\Org\MemberController;
+use App\Http\Controllers\Org\MembershipController;
 use App\Http\Controllers\Org\OrganizationHomeController;
 use App\Http\Controllers\Org\SettingsController;
+use App\Http\Controllers\Org\SignupLinkController;
 use App\Http\Controllers\OrganizationRequestController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -41,10 +43,12 @@ Route::prefix('orgs/{organization:slug}')
     ->scopeBindings()
     ->group(function () {
         Route::get('/', OrganizationHomeController::class)->name('show');
+        Route::delete('/membership', [MembershipController::class, 'destroy'])->name('membership.destroy');
 
         Route::middleware('can:manageMembers,organization')->group(function () {
             Route::get('/members', [MemberController::class, 'index'])->name('members.index');
             Route::get('/members/{membership}', [MemberController::class, 'show'])->whereNumber('membership')->name('members.show');
+            Route::patch('/members/{membership}', [MemberController::class, 'update'])->whereNumber('membership')->name('members.update');
 
             Route::get('/invitations/create', [InvitationController::class, 'create'])->name('invitations.create');
             Route::post('/invitations', [InvitationController::class, 'store'])->name('invitations.store');
@@ -56,6 +60,8 @@ Route::prefix('orgs/{organization:slug}')
             Route::delete('/join-requests/{membership}', [JoinRequestController::class, 'destroy'])->whereNumber('membership')->name('join-requests.destroy');
 
             Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
+            Route::patch('/settings', [SettingsController::class, 'update'])->name('settings.update');
+            Route::post('/settings/signup-link', [SignupLinkController::class, 'store'])->name('signup-link.store');
         });
     });
 
