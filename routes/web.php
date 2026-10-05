@@ -39,6 +39,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
 });
 
+Route::post('/dashboard/invitations/{invitation}', [InvitationAcceptanceController::class, 'acceptFromDashboard'])
+    ->middleware(['auth', 'verified', 'can:accept,invitation'])
+    ->whereNumber('invitation')
+    ->name('dashboard.invitations.accept');
+
 Route::prefix('orgs/{organization:slug}')
     ->name('orgs.')
     ->middleware(['auth', 'verified', 'member'])

@@ -60,8 +60,9 @@ All three entry points take the same **account fields** when the person is signe
 
 | Method | URI | Name | Middleware | Behaviour |
 |---|---|---|---|---|
-| GET | `/dashboard` | `dashboard` | auth | Where Fortify sends people after sign-in (`home`). Redirects to the last organization if it's still accessible, or to the only active one. Otherwise shows a chooser: active organizations, suspended ones (not clickable), pending invitations, join requests and organization requests, and the "verify your email" banner (FR-021, FR-022, edge cases). |
+| GET | `/dashboard` | `dashboard` | auth | Where Fortify sends people after sign-in (`home`). Redirects to the last organization if it's still accessible, or to the only active one. Otherwise shows a chooser: active organizations, suspended ones (not clickable), pending invitations (with an Accept button for verified users), join requests and organization requests, and the "verify your email" banner (FR-021, FR-022, edge cases). |
 | GET | `/profile` | `profile.edit` | auth | Name, phone and password forms posting to the Fortify routes above. |
+| POST | `/dashboard/invitations/{invitation}` | `dashboard.invitations.accept` | auth, verified, `can:accept,invitation` | The Accept button on the dashboard's pending invitations (T133). Only the person the invitation was sent to may accept. Anyone else gets 404, so other people's invitations are never revealed. An expired invitation, or one to an organization that isn't active, returns to the dashboard with an explanation. Otherwise the membership is created or reactivated as `active`, the invitation is deleted, and the person is sent to `orgs.show`. |
 
 The organization switcher appears in the layout header on every authenticated page. It lists
 active memberships in active organizations and links to `orgs.show` (FR-021, FR-023; switching

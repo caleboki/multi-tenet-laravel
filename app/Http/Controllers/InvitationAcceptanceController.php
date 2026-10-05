@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Actions\Invitations\AcceptInvitation;
+use App\Enums\OrganizationStatus;
 use App\Http\Requests\AcceptInvitationRequest;
 use App\Models\Invitation;
 use App\Models\User;
@@ -68,6 +69,36 @@ class InvitationAcceptanceController extends Controller
         $request->session()->forget('url.intended');
 
         return redirect()->route('orgs.show', $invitation->organization);
+    }
+
+    /**
+     * Accept an invitation from the dashboard as the signed-in person it was sent to.
+     *
+     * A verified email address proves the person owns the invited address, as opening the
+     * emailed link does. Only token hashes are stored, so the dashboard can't link to the
+     * email's URL. The `can:accept,invitation` middleware refuses anyone else with a 404.
+     */
+    public function acceptFromDashboard(Request $request, Invitation $invitation, AcceptInvitation $acceptInvitation): RedirectResponse
+    {
+        $invitation->load('organization');
+
+        if ($invitation->isExpired()) {
+            return redirect()
+                ->route('dashboard')
+                ->with('status', "That invitation has expired. Ask the organization's administrator to send a new one.");
+        }
+
+        if ($invitation->organization->status !== OrganizationStatus::Active) {
+            return redirect()
+                ->route('dashboard')
+                ->with('status', "That organization isn't open right now, so the invitation can't be accepted.");
+        }
+
+        $acceptInvitation->acceptAs($invitation, $request->user());
+
+        return redirect()
+            ->route('orgs.show', $invitation->organization)
+            ->with('status', "You've joined {$invitation->organization->name}.");
     }
 
     /**

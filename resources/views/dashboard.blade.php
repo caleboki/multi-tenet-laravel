@@ -58,9 +58,19 @@
                             <span class="font-medium">{{ $invitation->organization->name }}</span>
                             <x-status-badge>Invited as {{ Str::lower($invitation->role->label()) }}</x-status-badge>
                         </div>
-                        <p class="text-sm text-zinc-600 dark:text-zinc-400">
-                            Open the link in your invitation email to accept. It expires on {{ $invitation->expires_at->format('j M Y') }}.
-                        </p>
+                        @if ($user->hasVerifiedEmail())
+                            <form method="POST" action="{{ route('dashboard.invitations.accept', $invitation) }}" class="flex flex-wrap items-center justify-between gap-2">
+                                @csrf
+                                <p class="text-sm text-zinc-600 dark:text-zinc-400">It expires on {{ $invitation->expires_at->format('j M Y') }}.</p>
+                                <x-button>
+                                    Accept<span class="sr-only"> the invitation to {{ $invitation->organization->name }}</span>
+                                </x-button>
+                            </form>
+                        @else
+                            <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                                Verify your email address to accept here, or use the link in your invitation email. It expires on {{ $invitation->expires_at->format('j M Y') }}.
+                            </p>
+                        @endif
                     </li>
                 @endforeach
             </ul>
