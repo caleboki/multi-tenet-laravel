@@ -480,7 +480,7 @@ right role. Neither organization's admins can see the other membership.
 
 ### Tests for User Story 4 (write first, must fail)
 
-- [ ] T092 [P] [US4] Write tests/Feature/Membership/OrganizationSwitchingTest.php:
+- [x] T092 [P] [US4] Write tests/Feature/Membership/OrganizationSwitchingTest.php:
   - Opening any `orgs.*` page updates `users.last_organization_id`.
   - `dashboard` redirects to the last organization when it's still accessible, and to the only active one otherwise.
   - With several organizations and no usable last organization, it shows a chooser that lists suspended organizations as not clickable.
@@ -489,37 +489,45 @@ right role. Neither organization's admins can see the other membership.
   - The role shown changes per organization.
   - On `dashboard` and `profile.edit`, the header shows the last organization's name, or "No organization selected" when there is none.
   (FR-021, FR-022, FR-023, SC-006)
-- [ ] T093 [P] [US4] Write tests/Feature/Invitations/AcceptInvitationExistingAccountTest.php:
+  *Done: also checks that a refused organization page doesn't change the last organization, and that the header says "No organization selected" when there is none.*
+- [x] T093 [P] [US4] Write tests/Feature/Invitations/AcceptInvitationExistingAccountTest.php:
   - Invitation to an existing user's email: a signed-out visitor sees a sign-in prompt that returns to the invitation after login.
   - Signed in as that user, accepting creates an active membership without changing the password.
   - A `left` membership row is reused, with `joined_at` reset.
   - Signed in as a different user → "This invitation is for another email address" with no change.
   - `InvitationNotification` uses the "sign in to accept" wording.
   (FR-031; US4 scenario 3)
-- [ ] T094 [P] [US4] Write tests/Feature/Membership/CrossOrganizationPrivacyTest.php:
+- [x] T094 [P] [US4] Write tests/Feature/Membership/CrossOrganizationPrivacyTest.php:
   - An admin of A viewing a member who also belongs to B sees nothing naming B, on both `orgs.members.show` and `orgs.members.index`.
   - Deactivating the member in A leaves B's membership active.
   - Pending invitations shown on the dashboard name only their own organization.
   (FR-006, FR-020; US4 scenarios 4–5)
+  *Done: the deactivation case sets the membership inactive with the factory, because the deactivate endpoint arrives in US5 (T101 tests it through the endpoint). The dashboard test also checks that expired invitations aren't listed.*
 
 ### Implementation for User Story 4
 
-- [ ] T095 [US4] Update app/Http/Middleware/EnsureActiveMembership.php to set `last_organization_id` on the user when it differs from the current organization (a single update query, skipped when unchanged).
-- [ ] T096 [US4] Update app/Http/Controllers/DashboardController.php and resources/views/dashboard.blade.php:
+- [x] T095 [US4] Update app/Http/Middleware/EnsureActiveMembership.php to set `last_organization_id` on the user when it differs from the current organization (a single update query, skipped when unchanged).
+  *Done: uses `forceFill()->save()` only when the value changes.*
+- [x] T096 [US4] Update app/Http/Controllers/DashboardController.php and resources/views/dashboard.blade.php:
   - Redirect to `lastOrganization` when the user still has an active membership there and it's active.
   - Otherwise redirect to the only active organization.
   - Otherwise render the chooser (active organizations as links, suspended ones as non-clickable entries), with a "Pending invitations" section listing open, unexpired invitations for the user's email with accept links.
   - Eager-load `memberships.organization`.
-- [ ] T097 [P] [US4] Create resources/views/components/org-switcher.blade.php and include it in the resources/views/layouts/app.blade.php header. It takes the user's active memberships in active organizations, passed by a view composer registered in app/Providers/AppServiceProvider.php with eager loading, and highlights the current organization.
-- [ ] T098 [US4] Extend app/Actions/Invitations/AcceptInvitation.php with the **existing-account path**:
+  *Done, with one change: pending invitations are listed with their organization, role and expiry date, and the text "Open the link in your invitation email to accept", not an accept link. Only a hash of each token is stored (R5), so the link can't be rebuilt, and a separate accept-by-id route would let anyone signed in with an unverified address accept that address's invitations. Only invitations to active organizations are listed. Also added a "Choose an organization to work in" prompt when several are open.*
+- [x] T097 [P] [US4] Create resources/views/components/org-switcher.blade.php and include it in the resources/views/layouts/app.blade.php header. It takes the user's active memberships in active organizations, passed by a view composer registered in app/Providers/AppServiceProvider.php with eager loading, and highlights the current organization.
+  *Done: the switcher is a `<details>` disclosure with links (two clicks, no JavaScript, SC-006). The composer loads the open memberships once per page, and the header's "current organization" outside `/orgs/...` pages now comes from that list, so the separate `lastOrganization` and policy lookups are gone.*
+- [x] T098 [US4] Extend app/Actions/Invitations/AcceptInvitation.php with the **existing-account path**:
   - The signed-in user's email must equal the invitation's email.
   - Upsert the membership: reuse a `left` row, otherwise create one; set it active with the invitation's role and `joined_at=now`.
   - Delete the invitation.
-- [ ] T099 [US4] Update app/Http/Controllers/InvitationAcceptanceController.php and resources/views/invitations/show.blade.php to handle three cases:
+  *Done: the existing-account path is `acceptAs(Invitation, User)`, and both paths share one private step that activates the membership and deletes the invitation. Any existing membership row is reused, not only a `left` one, so the unique index can't be hit.*
+- [x] T099 [US4] Update app/Http/Controllers/InvitationAcceptanceController.php and resources/views/invitations/show.blade.php to handle three cases:
   - Existing account, signed out: show a sign-in prompt and call `redirect()->setIntendedUrl(...)` back to the invitation.
   - Signed in as a different email: refusal message.
   - Signed in as the invitee: an "Accept" button.
-- [ ] T100 [US4] Run `./vendor/bin/sail artisan test --compact tests/Feature/Membership tests/Feature/Invitations tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: AcceptInvitationRequest asks for account fields only from signed-out visitors. The "another email address" page has a Sign out button, because the guest layout has none. Accepting clears the stored return URL.*
+- [x] T100 [US4] Run `./vendor/bin/sail artisan test --compact tests/Feature/Membership tests/Feature/Invitations tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: 221 tests pass in the full suite. Mutation checks confirmed the tests catch forgetting the last organization, the dashboard ignoring it, accepting with someone else's account, listing suspended organizations in the switcher, showing other people's or expired invitations, and not reusing a left membership. Quickstart US4 steps 1–3 pass against the Sail app. Step 4 needs the US5 deactivate endpoint, so CrossOrganizationPrivacyTest covers it for now.*
 
 **Checkpoint**: US1 to US4 all work on their own (quickstart.md US4).
 

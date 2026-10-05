@@ -17,9 +17,13 @@
     <section aria-labelledby="organizations-heading" class="flex flex-col gap-3">
         <h2 id="organizations-heading" class="text-lg font-semibold">Your organizations</h2>
 
-        @if ($memberships->isEmpty())
+        @if ($memberships->isEmpty() && $suspendedMemberships->isEmpty())
             <p class="text-sm text-zinc-600 dark:text-zinc-400">You're not an active member of any organization yet.</p>
         @else
+            @if ($memberships->count() > 1)
+                <p class="text-sm text-zinc-600 dark:text-zinc-400">Choose an organization to work in.</p>
+            @endif
+
             <ul class="flex flex-col divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
                 @foreach ($memberships as $membership)
                     <li class="flex items-center justify-between gap-4 px-4 py-3">
@@ -29,9 +33,39 @@
                         <x-status-badge>{{ $membership->role->label() }}</x-status-badge>
                     </li>
                 @endforeach
+
+                @foreach ($suspendedMemberships as $membership)
+                    <li class="flex flex-col gap-1 px-4 py-3">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="font-medium">{{ $membership->organization->name }}</span>
+                            <x-status-badge tone="danger">Suspended</x-status-badge>
+                        </div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">This organization is suspended. You can't open it until the platform operators reinstate it.</p>
+                    </li>
+                @endforeach
             </ul>
         @endif
     </section>
+
+    @if ($invitations->isNotEmpty())
+        <section aria-labelledby="invitations-heading" class="flex flex-col gap-3">
+            <h2 id="invitations-heading" class="text-lg font-semibold">Pending invitations</h2>
+
+            <ul class="flex flex-col divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+                @foreach ($invitations as $invitation)
+                    <li class="flex flex-col gap-1 px-4 py-3">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="font-medium">{{ $invitation->organization->name }}</span>
+                            <x-status-badge>Invited as {{ Str::lower($invitation->role->label()) }}</x-status-badge>
+                        </div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                            Open the link in your invitation email to accept. It expires on {{ $invitation->expires_at->format('j M Y') }}.
+                        </p>
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 
     @if ($joinRequests->isNotEmpty())
         <section aria-labelledby="join-requests-heading" class="flex flex-col gap-3">

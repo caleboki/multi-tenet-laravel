@@ -24,13 +24,14 @@ class AcceptInvitationRequest extends FormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * The email address comes from the invitation, so it is not a field.
+     * Only a signed-out person creates an account, and the email address comes from the
+     * invitation, so it is not a field. A signed-in invitee submits no fields.
      *
      * @return array<string, ValidationRule|array<mixed>|string>
      */
     public function rules(): array
     {
-        return Arr::except($this->accountRules(), 'email');
+        return $this->user() === null ? Arr::except($this->accountRules(), 'email') : [];
     }
 
     /**

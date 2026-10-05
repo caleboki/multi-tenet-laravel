@@ -2,10 +2,13 @@
 
 namespace App\Providers;
 
+use App\Models\Membership;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\View\View as ViewContract;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -42,18 +45,47 @@ class AppServiceProvider extends ServiceProvider
         Gate::define('operate-platform', fn (User $user): bool => $user->is_platform_operator);
 
         View::composer('layouts.app', function (ViewContract $view): void {
-            $view->with('currentOrganization', $this->currentOrganization(request()));
+            $request = request();
+            $openMemberships = $this->openMemberships($request->user());
+
+            $view->with([
+                'openMemberships' => $openMemberships,
+                'currentOrganization' => $this->currentOrganization($request, $openMemberships),
+            ]);
         });
+    }
+
+    /**
+     * Get the user's active memberships in active organizations, for the header's
+     * organization switcher (FR-021).
+     *
+     * @return Collection<int, Membership>
+     */
+    private function openMemberships(?User $user): Collection
+    {
+        if ($user === null) {
+            return new Collection;
+        }
+
+        return $user->memberships()
+            ->active()
+            ->whereHas('organization', fn (Builder $organization) => $organization->active())
+            ->with('organization')
+            ->get()
+            ->sortBy(fn (Membership $membership): string => $membership->organization->name)
+            ->values();
     }
 
     /**
      * Get the organization the header names as current (FR-023).
      *
      * Inside an organization's pages it is the organization in the URL. Elsewhere it
-     * is the organization the user last worked in, if they can still enter it. Operator
+     * is the organization the user last worked in, if they can still open it. Operator
      * pages also name an organization in the URL, but that is not the user's own.
+     *
+     * @param  Collection<int, Membership>  $openMemberships
      */
-    private function currentOrganization(Request $request): ?Organization
+    private function currentOrganization(Request $request, Collection $openMemberships): ?Organization
     {
         $organization = $request->route('organization');
 
@@ -61,13 +93,8 @@ class AppServiceProvider extends ServiceProvider
             return $organization;
         }
 
-        $user = $request->user();
-        $lastOrganization = $user?->lastOrganization;
-
-        if ($lastOrganization === null) {
-            return null;
-        }
-
-        return Gate::forUser($user)->allows('view', $lastOrganization) ? $lastOrganization : null;
+        return $openMemberships
+            ->first(fn (Membership $membership): bool => $membership->organization_id === $request->user()?->last_organization_id)
+            ?->organization;
     }
 }

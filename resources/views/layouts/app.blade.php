@@ -24,6 +24,8 @@
                         <span class="sr-only">Current organization:</span>
                         {{ $currentOrganization?->name ?? 'No organization selected' }}
                     </p>
+
+                    <x-org-switcher :memberships="$openMemberships" :current="$currentOrganization" />
                 </div>
 
                 <div class="flex items-center gap-4">

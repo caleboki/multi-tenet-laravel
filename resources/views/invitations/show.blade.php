@@ -11,6 +11,30 @@
                 Ask your organization's administrator to send you a new invitation.
             </p>
         </div>
+    @elseif ($isForSignedInUser)
+        <div class="flex flex-col gap-2">
+            <h1 class="text-xl font-semibold">Join {{ $invitation->organization->name }}</h1>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                You've been invited to join as {{ Str::lower($invitation->role->label()) }}. You're signed in as {{ $invitation->email }}.
+            </p>
+        </div>
+
+        <form method="POST" action="{{ route('invitations.accept', $token) }}">
+            @csrf
+            <x-button>Accept invitation</x-button>
+        </form>
+    @elseif (auth()->check())
+        <div class="flex flex-col gap-2">
+            <h1 class="text-xl font-semibold">Join {{ $invitation->organization->name }}</h1>
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                This invitation is for another email address. Sign out, then open the link again and sign in with the invited address.
+            </p>
+        </div>
+
+        <form method="POST" action="{{ route('logout') }}">
+            @csrf
+            <x-button variant="secondary">Sign out</x-button>
+        </form>
     @elseif ($hasAccount)
         <div class="flex flex-col gap-2">
             <h1 class="text-xl font-semibold">Join {{ $invitation->organization->name }}</h1>

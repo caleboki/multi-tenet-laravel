@@ -7,44 +7,65 @@ use App\Http\Requests\AcceptInvitationRequest;
 use App\Models\Invitation;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class InvitationAcceptanceController extends Controller
 {
     /**
-     * Show the invitation, or explain that its link can no longer be used.
+     * Show the invitation, or explain why it can't be accepted here.
+     *
+     * A signed-out invitee who already has an account is asked to sign in, and is
+     * brought back here afterwards (FR-031).
      */
-    public function show(string $token): View
+    public function show(Request $request, string $token): View
     {
         $invitation = $this->openInvitation($token);
+        $user = $request->user();
+        $hasAccount = $invitation !== null && User::query()->where('email', $invitation->email)->exists();
+
+        if ($user === null && $hasAccount) {
+            redirect()->setIntendedUrl($request->url());
+        }
 
         return view('invitations.show', [
             'token' => $token,
             'invitation' => $invitation,
-            'hasAccount' => $invitation !== null && User::query()->where('email', $invitation->email)->exists(),
+            'hasAccount' => $hasAccount,
+            'isForSignedInUser' => $user !== null && $user->email === $invitation?->email,
         ]);
     }
 
     /**
-     * Create the invitee's account, make them an active member, and sign them in (FR-031, FR-032).
+     * Accept the invitation and open the organization (FR-031, FR-032).
+     *
+     * A signed-in invitee keeps their account. A signed-out person with a new email
+     * address creates an account and is signed in.
      */
     public function accept(AcceptInvitationRequest $request, string $token, AcceptInvitation $acceptInvitation): RedirectResponse
     {
         $invitation = $this->openInvitation($token);
+        $user = $request->user();
 
-        if ($invitation === null) {
+        if ($invitation === null || ($user !== null && $user->email !== $invitation->email)) {
             return redirect()->route('invitations.show', $token);
         }
 
-        $membership = $acceptInvitation->handle(
-            $invitation,
-            $request->safe()->only(['name', 'password', 'phone']),
-            adultConfirmed: $request->boolean('adult_confirmation'),
-        );
+        if ($user !== null) {
+            $acceptInvitation->acceptAs($invitation, $user);
+        } else {
+            $membership = $acceptInvitation->handle(
+                $invitation,
+                $request->safe()->only(['name', 'password', 'phone']),
+                adultConfirmed: $request->boolean('adult_confirmation'),
+            );
 
-        Auth::login($membership->user);
-        $request->session()->regenerate();
+            Auth::login($membership->user);
+            $request->session()->regenerate();
+        }
+
+        $request->session()->forget('url.intended');
 
         return redirect()->route('orgs.show', $invitation->organization);
     }
