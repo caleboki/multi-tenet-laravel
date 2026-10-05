@@ -9,7 +9,7 @@
             Switch organization
         </summary>
 
-        <nav aria-label="Your organizations" class="absolute left-0 z-10 mt-2 min-w-56 rounded-md border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
+        <nav aria-label="Switch organization" class="absolute left-0 z-10 mt-2 min-w-56 rounded-md border border-zinc-200 bg-white py-1 shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
             <ul>
                 @foreach ($memberships as $membership)
                     @php($isCurrent = $current?->is($membership->organization) ?? false)

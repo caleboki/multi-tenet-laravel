@@ -670,14 +670,26 @@ file has exactly the organization's filtered members.
 
 **Purpose**: Performance checks, quality gates and end-to-end validation
 
-- [ ] T123 [P] Create database/seeders/RosterPerformanceSeeder.php (local only, not called from DatabaseSeeder). It creates 500 organizations totalling 50,000 memberships, one of which has 1,000 members, using factories with bulk inserts. Run it, then confirm that organization's roster page and a search render in under 2 seconds (SC-007, SC-008).
-- [ ] T124 [P] Time a 1,000-row import against seeded data, then run `./vendor/bin/sail artisan queue:listen` and confirm the report appears in under 2 minutes (SC-010).
-- [ ] T125 [P] Do a best-effort accessibility pass on every view under resources/views/: labelled inputs, error messages linked to fields, visible focus styles, readable contrast, and keyboard-only operation (spec Assumptions).
-- [ ] T126 [P] Run `./vendor/bin/sail composer audit` and resolve or record any advisories.
-- [ ] T127 Run `./vendor/bin/sail pint --format agent` and confirm no changes remain (format gate).
-- [ ] T128 Run `./vendor/bin/sail artisan migrate:fresh --seed`, then `./vendor/bin/sail artisan migrate:rollback` back to zero, then `./vendor/bin/sail artisan migrate` (migration gate).
-- [ ] T129 Run the full suite with `./vendor/bin/sail artisan test --compact` and confirm it's all green, with no skipped tests (test gate).
-- [ ] T130 Walk through every manual scenario in specs/001-multi-tenant-volunteers/quickstart.md and record any deviations as new tasks.
+- [x] T123 [P] Create database/seeders/RosterPerformanceSeeder.php (local only, not called from DatabaseSeeder). It creates 500 organizations totalling 50,000 memberships, one of which has 1,000 members, using factories with bulk inserts. Run it, then confirm that organization's roster page and a search render in under 2 seconds (SC-007, SC-008).
+  *Done, on the `testing` database (the user chose this so the dev data stays untouched): 503 organizations and 50,005 memberships, seeded in 19 s. Timed through the full HTTP stack (median of three warm runs), against the 2 s target: 1,000-member roster page 1 at 47 ms, last page 40 ms, search 31 ms, search with role and status filters 41 ms, CSV export of 1,000 rows 20 ms, organization home 19 ms, operator list across 500 organizations 28–31 ms. The seeder refuses to run in production.*
+- [x] T124 [P] Time a 1,000-row import against seeded data, then run `./vendor/bin/sail artisan queue:listen` and confirm the report appears in under 2 minutes (SC-010).
+  *Done, on the `testing` database: a 1,000-row import into an organization with 98 members produced its report in 3.7 s (1,000 invited, 0 skipped). The queue then sent all 1,000 invitation emails in 31 s with no failures, using the `array` mailer so the dev log wasn't flooded. Well inside 2 minutes (SC-010).*
+- [x] T125 [P] Do a best-effort accessibility pass on every view under resources/views/: labelled inputs, error messages linked to fields, visible focus styles, readable contrast, and keyboard-only operation (spec Assumptions).
+  *Done: every form control has a label (components, or wrapping or `for` labels), errors are linked with `aria-describedby`, every page has a title, every table has a caption and scoped headers, all links and controls have visible focus styles, and the only disclosure (the switcher) is a native `<details>`. Contrast checked by hand: body text, links, buttons, badges and errors meet WCAG AA in light and dark mode (lowest is white on the red danger button, about 4.8:1). Fixed: added the skip link to the guest layout, and renamed the switcher's navigation landmark to "Switch organization" so it doesn't share the dashboard section's name. Not checked visually, because the CSS bundle is stale (T131).*
+- [x] T126 [P] Run `./vendor/bin/sail composer audit` and resolve or record any advisories.
+  *Done: no security advisories and no abandoned packages.*
+- [x] T127 Run `./vendor/bin/sail pint --format agent` and confirm no changes remain (format gate).
+  *Done: Pint reports no changes across the codebase.*
+- [x] T128 Run `./vendor/bin/sail artisan migrate:fresh --seed`, then `./vendor/bin/sail artisan migrate:rollback` back to zero, then `./vendor/bin/sail artisan migrate` (migration gate).
+  *Done, on the `testing` database, as the user chose: `migrate:fresh --seed` succeeded, one `migrate:rollback` reversed all 7 migrations and left no application tables, and `migrate` applied all 7 with none pending.*
+- [x] T129 Run the full suite with `./vendor/bin/sail artisan test --compact` and confirm it's all green, with no skipped tests (test gate).
+  *Done: 290 tests, 290 passed, none skipped, risky or incomplete.*
+- [x] T130 Walk through every manual scenario in specs/001-multi-tenant-volunteers/quickstart.md and record any deviations as new tasks.
+  *Done: each story's scenarios were walked through against the Sail app at the end of its phase (Phases 3–8). This phase added a read-only smoke test of every page as each seeded user (all statuses as expected) and a log check: the only server errors were three Boost MCP console calls and one deliberate mutation during Phase 3, all outside normal use. Deviations are recorded below as T131–T134.*
+- [ ] T131 Rebuild the frontend assets inside Sail. `./vendor/bin/sail npm run build` fails because `node_modules` was installed on macOS and has no Linux binary for Vite's bundler (`@rolldown/binding-linux-x64-gnu`). So `public/build` predates Phase 2, and most Tailwind classes used since then are missing. Fix with `./vendor/bin/sail npm ci && ./vendor/bin/sail npm run build`. This replaces the host `node_modules`, so the user must decide (quickstart Setup, Constitution V).
+- [ ] T132 Update the quickstart.md Prerequisites. They still say `.env` has `APP_URL=http://localhost:8000`, but T002 already set `APP_URL=http://localhost`. Also mention the T131 `npm ci` step in Setup.
+- [ ] T133 Decide whether the dashboard's pending invitations get an accept button (T096 deviation). They show the organization, role and expiry, and say to use the emailed link, because only token hashes are stored. Option: an accept action for signed-in, verified invitees.
+- [ ] T134 Decide whether phone numbers like `+44 7700 900123` keep the formula prefix in exports. R11 prefixes every cell starting with `+`, so international numbers export as `'+44…`. Excel hides the quote, but other tools may show it.
 
 ---
 
