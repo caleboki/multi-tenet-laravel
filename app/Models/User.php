@@ -6,6 +6,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -18,6 +20,15 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    /**
+     * The model's default values for attributes, matching the column defaults.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_platform_operator' => false,
+    ];
 
     /**
      * Get the attributes that should be cast.
@@ -52,6 +63,17 @@ class User extends Authenticatable implements MustVerifyEmail
     public function lastOrganization(): BelongsTo
     {
         return $this->belongsTo(Organization::class, 'last_organization_id');
+    }
+
+    /**
+     * Scope the query to the active administrators of the given organization.
+     */
+    #[Scope]
+    protected function administratorsOf(Builder $query, Organization $organization): void
+    {
+        $query->whereHas('memberships', fn (Builder $membership) => $membership
+            ->whereBelongsTo($organization)
+            ->administrators());
     }
 
     /**

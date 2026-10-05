@@ -1,5 +1,5 @@
 @php
-    $organization = request()->route('organization');
+    $organization = request()->routeIs('orgs.*') ? request()->route('organization') : null;
 @endphp
 
 @extends(auth()->check() ? 'layouts.app' : 'layouts.guest')

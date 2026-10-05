@@ -50,13 +50,14 @@ class AppServiceProvider extends ServiceProvider
      * Get the organization the header names as current (FR-023).
      *
      * Inside an organization's pages it is the organization in the URL. Elsewhere it
-     * is the organization the user last worked in, if they can still enter it.
+     * is the organization the user last worked in, if they can still enter it. Operator
+     * pages also name an organization in the URL, but that is not the user's own.
      */
     private function currentOrganization(Request $request): ?Organization
     {
         $organization = $request->route('organization');
 
-        if ($organization instanceof Organization) {
+        if ($request->routeIs('orgs.*') && $organization instanceof Organization) {
             return $organization;
         }
 

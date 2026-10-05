@@ -392,7 +392,7 @@ the requester and confirm admin access with an empty roster.
 
 ### Tests for User Story 3 (write first, must fail)
 
-- [ ] T073 [P] [US3] Write tests/Feature/Organizations/RequestOrganizationTest.php for `organization-requests.create` and `organization-requests.store`:
+- [x] T073 [P] [US3] Write tests/Feature/Organizations/RequestOrganizationTest.php for `organization-requests.create` and `organization-requests.store`:
   - A guest with account fields gets an unverified user (signed in) and a `pending` organization with `requested_by_id`, a slug and `contact_email`.
   - A signed-in user needs no account fields.
   - A signed-out person with an existing account follows "Sign in" and is returned to `organization-requests.create` after login (FR-009).
@@ -402,58 +402,67 @@ the requester and confirm admin access with an empty roster.
   - Throttled.
   - The dashboard shows "awaiting approval".
   (FR-007, FR-009, FR-010, FR-045)
-- [ ] T074 [P] [US3] Write tests/Feature/Organizations/OrganizationNameConstraintTest.php: inserting two organizations whose names differ only by case, both non-rejected, throws `UniqueConstraintViolationException` at the database level. That proves the T013 partial index.
-- [ ] T075 [P] [US3] Write tests/Feature/Operator/OperatorAccessTest.php:
+  *Done: also covers the guest form (account fields and Sign in link), wildcard characters in the name check, required fields, the 120-character limit, a lowercased contact email, and the dashboard's rejected entry with its reason (T090).*
+- [x] T074 [P] [US3] Write tests/Feature/Organizations/OrganizationNameConstraintTest.php: inserting two organizations whose names differ only by case, both non-rejected, throws `UniqueConstraintViolationException` at the database level. That proves the T013 partial index.
+- [x] T075 [P] [US3] Write tests/Feature/Operator/OperatorAccessTest.php:
   - A non-operator gets 403 on every `operator.*` route.
   - `operator.organizations.index` defaults to pending and hides pending organizations whose requester is unverified.
   - It shows name, status, contact email, requester, created date and active member count.
   - `operator.organizations.show` shows no roster or member data.
   (FR-011, FR-014)
-- [ ] T076 [P] [US3] Write tests/Feature/Organizations/ReviewOrganizationTest.php:
+  *Done: the sweep in TenantIsolationTest already gives non-operators 403 on every `operator.*` route, so this file adds one HTTP case: the 403 page must not reveal the organization's name. Also confirms an operator gets 404 on a roster (FR-014). Added content and escaping tests for the four new notifications under tests/Feature/Notifications.*
+- [x] T076 [P] [US3] Write tests/Feature/Organizations/ReviewOrganizationTest.php:
   - Approve → `active`, `signup_token` set, requester has an active Administrator membership, `OrganizationApproved` sent.
   - Reject requires `reason` → `rejected` with the reason, `OrganizationRejected` sent with the reason, and the name can be requested again.
   - Approving or rejecting a non-pending organization → 409.
   (FR-012)
-- [ ] T077 [P] [US3] Write tests/Feature/Organizations/SuspendOrganizationTest.php:
+- [x] T077 [P] [US3] Write tests/Feature/Organizations/SuspendOrganizationTest.php:
   - Suspend an active organization → its members get the 403 suspended page, and active admins get `OrganizationSuspended`.
   - Reinstate → access returns.
   - Suspending a non-active organization or reinstating a non-suspended one → 409.
   - A member of the suspended organization keeps access to their other organizations.
   (FR-013)
-- [ ] T078 [P] [US3] Write tests/Feature/Organizations/OrganizationRequestNotificationTest.php: a verified requester's submission sends `OrganizationRequested` to every operator immediately. An unverified requester's submission sends it only once `Verified` is dispatched (R9).
-- [ ] T079 [P] [US3] Write tests/Feature/Console/OperatorCommandsTest.php: `app:grant-operator {email}` sets the flag, `app:revoke-operator {email}` clears it, and an unknown email exits with failure.
+- [x] T078 [P] [US3] Write tests/Feature/Organizations/OrganizationRequestNotificationTest.php: a verified requester's submission sends `OrganizationRequested` to every operator immediately. An unverified requester's submission sends it only once `Verified` is dispatched (R9).
+- [x] T079 [P] [US3] Write tests/Feature/Console/OperatorCommandsTest.php: `app:grant-operator {email}` sets the flag, `app:revoke-operator {email}` clears it, and an unknown email exits with failure.
 
 ### Implementation for User Story 3
 
-- [ ] T080 [P] [US3] Create app/Rules/UniqueOrganizationName.php (`make:rule`). It fails when `Organization::query()->whereNot('status', OrganizationStatus::Rejected)->whereLike('name', $value, caseSensitive: false)` finds a row, with `%`, `_` and `\` escaped in `$value` so the match is exact. It accepts an optional organization to ignore (`whereKeyNot`). No raw SQL: the database index from T013 still catches races (T074).
-- [ ] T081 [P] [US3] Create the queued notifications per contracts/notifications.md:
+- [x] T080 [P] [US3] Create app/Rules/UniqueOrganizationName.php (`make:rule`). It fails when `Organization::query()->whereNot('status', OrganizationStatus::Rejected)->whereLike('name', $value, caseSensitive: false)` finds a row, with `%`, `_` and `\` escaped in `$value` so the match is exact. It accepts an optional organization to ignore (`whereKeyNot`). No raw SQL: the database index from T013 still catches races (T074).
+  *Done: the message is "That organization name is already taken."*
+- [x] T081 [P] [US3] Create the queued notifications per contracts/notifications.md:
   - app/Notifications/OrganizationRequested.php
   - app/Notifications/OrganizationApproved.php
   - app/Notifications/OrganizationRejected.php
   - app/Notifications/OrganizationSuspended.php
-- [ ] T082 [US3] Create app/Actions/Organizations/RequestOrganization.php with `handle(User $requester, string $name, string $contactEmail): Organization`. It generates a unique slug (`Str::slug` plus a numeric suffix), creates the organization as `pending`, and notifies operators (`User::where('is_platform_operator', true)`) only if the requester is verified.
-- [ ] T083 [P] [US3] Create the transactional actions. Each guards the current status and throws `ConflictHttpException` (409) when it doesn't apply:
+- [x] T082 [US3] Create app/Actions/Organizations/RequestOrganization.php with `handle(User $requester, string $name, string $contactEmail): Organization`. It generates a unique slug (`Str::slug` plus a numeric suffix), creates the organization as `pending`, and notifies operators (`User::where('is_platform_operator', true)`) only if the requester is verified.
+  *Done: slugs are capped at 130 characters before any suffix, and fall back to `organization` when the name has no URL-safe characters. `notifyOperators()` is public so the T084 listener reuses it.*
+- [x] T083 [P] [US3] Create the transactional actions. Each guards the current status and throws `ConflictHttpException` (409) when it doesn't apply:
   - app/Actions/Organizations/ApproveOrganization.php: status `active`, `regenerateSignupToken()`, an Administrator membership for the requester, notify.
   - app/Actions/Organizations/RejectOrganization.php: reason, notify.
   - app/Actions/Organizations/SuspendOrganization.php: notify active admins.
   - app/Actions/Organizations/ReinstateOrganization.php.
-- [ ] T084 [US3] Extend app/Listeners/SendPendingRequestNotifications.php to also send `OrganizationRequested` to operators for each pending organization the newly verified user requested.
-- [ ] T085 [P] [US3] Create the form requests:
+  *Done: each action locks the organization row inside its transaction, so two operators can't both approve, or approve and reject, the same request. Suspension emails go to the active administrators through a new `User::administratorsOf()` scope, which RequestToJoin now uses too.*
+- [x] T084 [US3] Extend app/Listeners/SendPendingRequestNotifications.php to also send `OrganizationRequested` to operators for each pending organization the newly verified user requested.
+- [x] T085 [P] [US3] Create the form requests:
   - app/Http/Requests/StoreOrganizationRequest.php: `organization_name` with `UniqueOrganizationName`, max 120; `contact_email`; plus `AccountValidationRules` for guests.
   - app/Http/Requests/RejectOrganizationRequest.php: `reason` required, max 1000.
-- [ ] T086 [US3] Create app/Http/Controllers/OrganizationRequestController.php with `create` and `store`. `create` sets the intended URL for guests, as in T066. `store` is throttled by `public-forms` and calls `CreateAccount` with `verified: false` for guests, then `RequestOrganization`, redirect to `dashboard`). Register `organization-requests.create` and `organization-requests.store` in routes/web.php.
-- [ ] T087 [US3] Create the operator controllers and register their `operator.organizations.*` routes in routes/web.php:
+- [x] T086 [US3] Create app/Http/Controllers/OrganizationRequestController.php with `create` and `store`. `create` sets the intended URL for guests, as in T066. `store` is throttled by `public-forms` and calls `CreateAccount` with `verified: false` for guests, then `RequestOrganization`, redirect to `dashboard`). Register `organization-requests.create` and `organization-requests.store` in routes/web.php.
+  *Done: as in JoinController, guest account creation and the request run in one transaction, and the stored return URL is cleared after submitting.*
+- [x] T087 [US3] Create the operator controllers and register their `operator.organizations.*` routes in routes/web.php:
   - app/Http/Controllers/Operator/OrganizationController.php: `index` filtered by `status` with `withCount` of active memberships, eager-loading `requester`, paginated; and `show`.
   - app/Http/Controllers/Operator/OrganizationReviewController.php: `approve` and `reject`.
   - app/Http/Controllers/Operator/OrganizationSuspensionController.php: `suspend` and `reinstate`.
-- [ ] T088 [P] [US3] Create the console commands app/Console/Commands/GrantOperator.php (`app:grant-operator {email}`) and app/Console/Commands/RevokeOperator.php (`app:revoke-operator {email}`) with `make:command`.
-- [ ] T089 [P] [US3] Create the views:
+  *Done: an unknown `status` filter falls back to pending. Pending requests are listed oldest first.*
+- [x] T088 [P] [US3] Create the console commands app/Console/Commands/GrantOperator.php (`app:grant-operator {email}`) and app/Console/Commands/RevokeOperator.php (`app:revoke-operator {email}`) with `make:command`.
+- [x] T089 [P] [US3] Create the views:
   - resources/views/organization-requests/create.blade.php: account fields for guests with an "Already have an account? Sign in" link.
   - resources/views/operator/organizations/index.blade.php: status tabs, table.
   - resources/views/operator/organizations/show.blade.php: approve, reject-with-reason, suspend and reinstate forms.
   Add a "Request an organization" link to resources/views/welcome.blade.php, and an "Operator" header link for operators to resources/views/layouts/app.blade.php.
-- [ ] T090 [US3] Add a "Your organization requests" section (pending: "awaiting approval"; rejected: the reason) to resources/views/dashboard.blade.php and app/Http/Controllers/DashboardController.php.
-- [ ] T091 [US3] Run `./vendor/bin/sail artisan test --compact tests/Feature/Organizations tests/Feature/Operator tests/Feature/Console tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: also added `OrganizationStatus::tone()` for badges. The 403 page now links back to an organization only on `orgs.*` pages, and the 409 page links operators back to the operator page. The header's "current organization" uses the URL only on `orgs.*` pages, so a non-operator's 403 on an operator URL reveals no organization name. `User` now defaults `is_platform_operator` to false, matching the column, because the header's `@can('operate-platform')` check failed on newly created users.*
+- [x] T090 [US3] Add a "Your organization requests" section (pending: "awaiting approval"; rejected: the reason) to resources/views/dashboard.blade.php and app/Http/Controllers/DashboardController.php.
+- [x] T091 [US3] Run `./vendor/bin/sail artisan test --compact tests/Feature/Organizations tests/Feature/Operator tests/Feature/Console tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: 198 tests pass in the full suite. Mutation checks confirmed the tests catch a name check without wildcard escaping, rejected names staying taken, notifying operators before verification, approving a non-pending organization, and both organization-name leaks on operator 403 pages, plus listing unverified requests. Quickstart US3 steps 1–5 pass against the Sail app. Step 4 used a test organization (Book Swap) instead of rejecting the seeded Community Kitchen, and River Cleanup was reinstated after step 5.*
 
 **Checkpoint**: US1, US2 and US3 all work on their own (quickstart.md US3).
 

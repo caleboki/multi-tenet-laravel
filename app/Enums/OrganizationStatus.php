@@ -21,4 +21,16 @@ enum OrganizationStatus: string
             self::Suspended => 'Suspended',
         };
     }
+
+    /**
+     * Get the tone of the status badge that shows this status.
+     */
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Pending => 'warning',
+            self::Active => 'success',
+            self::Rejected, self::Suspended => 'danger',
+        };
+    }
 }

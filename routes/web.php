@@ -3,17 +3,24 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\JoinController;
+use App\Http\Controllers\Operator\OrganizationController as OperatorOrganizationController;
+use App\Http\Controllers\Operator\OrganizationReviewController;
+use App\Http\Controllers\Operator\OrganizationSuspensionController;
 use App\Http\Controllers\Org\InvitationController;
 use App\Http\Controllers\Org\JoinRequestController;
 use App\Http\Controllers\Org\MemberController;
 use App\Http\Controllers\Org\OrganizationHomeController;
 use App\Http\Controllers\Org\SettingsController;
+use App\Http\Controllers\OrganizationRequestController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/organizations/request', [OrganizationRequestController::class, 'create'])->name('organization-requests.create');
+Route::post('/organizations/request', [OrganizationRequestController::class, 'store'])->middleware('throttle:public-forms')->name('organization-requests.store');
 
 Route::get('/join/{signupToken}', [JoinController::class, 'show'])->name('join.show');
 Route::post('/join/{signupToken}', [JoinController::class, 'store'])->middleware('throttle:public-forms')->name('join.store');
@@ -56,5 +63,10 @@ Route::prefix('operator')
     ->name('operator.')
     ->middleware(['auth', 'verified', 'can:operate-platform'])
     ->group(function () {
-        //
+        Route::get('/organizations', [OperatorOrganizationController::class, 'index'])->name('organizations.index');
+        Route::get('/organizations/{organization:slug}', [OperatorOrganizationController::class, 'show'])->name('organizations.show');
+        Route::post('/organizations/{organization:slug}/approve', [OrganizationReviewController::class, 'approve'])->name('organizations.approve');
+        Route::post('/organizations/{organization:slug}/reject', [OrganizationReviewController::class, 'reject'])->name('organizations.reject');
+        Route::post('/organizations/{organization:slug}/suspend', [OrganizationSuspensionController::class, 'suspend'])->name('organizations.suspend');
+        Route::post('/organizations/{organization:slug}/reinstate', [OrganizationSuspensionController::class, 'reinstate'])->name('organizations.reinstate');
     });

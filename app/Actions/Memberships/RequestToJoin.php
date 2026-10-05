@@ -8,7 +8,6 @@ use App\Models\Membership;
 use App\Models\Organization;
 use App\Models\User;
 use App\Notifications\JoinRequestReceived;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 
@@ -53,13 +52,7 @@ class RequestToJoin
      */
     public function notifyAdministrators(Organization $organization, User $requester): void
     {
-        $administrators = User::query()
-            ->whereHas('memberships', fn (Builder $membership) => $membership
-                ->whereBelongsTo($organization)
-                ->administrators())
-            ->get();
-
-        Notification::send($administrators, new JoinRequestReceived($organization, $requester));
+        Notification::send(User::query()->administratorsOf($organization)->get(), new JoinRequestReceived($organization, $requester));
     }
 
     /**

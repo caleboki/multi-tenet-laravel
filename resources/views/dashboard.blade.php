@@ -52,4 +52,32 @@
             </ul>
         </section>
     @endif
+
+    @if ($organizationRequests->isNotEmpty())
+        <section aria-labelledby="organization-requests-heading" class="flex flex-col gap-3">
+            <h2 id="organization-requests-heading" class="text-lg font-semibold">Your organization requests</h2>
+
+            <ul class="flex flex-col divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+                @foreach ($organizationRequests as $organizationRequest)
+                    <li class="flex flex-col gap-1 px-4 py-3">
+                        <div class="flex items-center justify-between gap-4">
+                            <span class="font-medium">{{ $organizationRequest->name }}</span>
+
+                            @if ($organizationRequest->status === \App\Enums\OrganizationStatus::Rejected)
+                                <x-status-badge tone="danger">Not approved</x-status-badge>
+                            @elseif ($user->hasVerifiedEmail())
+                                <x-status-badge tone="warning">Awaiting approval</x-status-badge>
+                            @else
+                                <x-status-badge tone="warning">Verify your email first</x-status-badge>
+                            @endif
+                        </div>
+
+                        @if ($organizationRequest->status === \App\Enums\OrganizationStatus::Rejected)
+                            <p class="text-sm text-zinc-600 dark:text-zinc-400">Reason: {{ $organizationRequest->rejection_reason }}</p>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 @endsection

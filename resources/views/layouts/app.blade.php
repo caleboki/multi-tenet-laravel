@@ -27,6 +27,12 @@
                 </div>
 
                 <div class="flex items-center gap-4">
+                    @can('operate-platform')
+                        <a href="{{ route('operator.organizations.index') }}" class="rounded-sm text-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
+                            Operator
+                        </a>
+                    @endcan
+
                     <a href="{{ route('profile.edit') }}" class="rounded-sm text-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
                         Profile
                     </a>

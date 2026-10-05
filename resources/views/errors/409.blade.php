@@ -13,7 +13,11 @@
             {{ $exception->getMessage() ?: 'Someone may have dealt with it already. Refresh the page to see the current state.' }}
         </p>
 
-        @if ($organization instanceof \App\Models\Organization)
+        @if ($organization instanceof \App\Models\Organization && request()->routeIs('operator.*'))
+            <a href="{{ route('operator.organizations.show', $organization) }}" class="self-start text-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
+                Back to {{ $organization->name }}
+            </a>
+        @elseif ($organization instanceof \App\Models\Organization)
             <a href="{{ route('orgs.show', $organization) }}" class="self-start text-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
                 Back to {{ $organization->name }}
             </a>
