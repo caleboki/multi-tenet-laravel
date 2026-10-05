@@ -40,4 +40,29 @@ enum RosterStatus: string
             self::Left => 'Left',
         };
     }
+
+    /**
+     * Get the tone of the status badge that shows this status.
+     */
+    public function tone(): string
+    {
+        return match ($this) {
+            self::Active => 'success',
+            self::Pending => 'warning',
+            self::Inactive => 'danger',
+            self::Invited, self::Left => 'neutral',
+        };
+    }
+
+    /**
+     * Get every status as an option for a filter list, keyed by value.
+     *
+     * @return array<string, string>
+     */
+    public static function options(): array
+    {
+        return collect(self::cases())
+            ->mapWithKeys(fn (self $status): array => [$status->value => $status->label()])
+            ->all();
+    }
 }

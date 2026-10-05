@@ -45,6 +45,16 @@ class Organization extends Model
     }
 
     /**
+     * Get the organization's open invitations.
+     *
+     * @return HasMany<Invitation, $this>
+     */
+    public function invitations(): HasMany
+    {
+        return $this->hasMany(Invitation::class);
+    }
+
+    /**
      * Get the user who requested the organization.
      *
      * @return BelongsTo<User, $this>

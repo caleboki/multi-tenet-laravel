@@ -205,14 +205,14 @@ to the other organization's members return 404.
 
 ### Tests for User Story 1 (write first, must fail)
 
-- [ ] T033 [P] [US1] Write tests/Feature/TenantIsolationTest.php. It walks every route named `orgs.*` from `Route::getRoutes()` and fills `{organization}`, `{membership}` and `{invitation}` using Organization B's records:
+- [x] T033 [P] [US1] Write tests/Feature/TenantIsolationTest.php. It walks every route named `orgs.*` from `Route::getRoutes()` and fills `{organization}`, `{membership}` and `{invitation}` using Organization B's records:
   - (a) An active admin of Organization A requesting Organization B's URLs gets 404 for every method.
   - (b) That admin requesting Organization A's URL with a child record from Organization B gets 404.
   - (c) A guest requesting any registered `orgs.*`, `operator.*`, `dashboard` or `profile.edit` route is redirected to `login`. Match by name or prefix among routes that exist, so the test passes before later stories add theirs.
   - (d) A verified non-operator requesting any `operator.*` route gets 403.
   - Routes are read from the route list on every run, so routes added in later stories are swept automatically (Constitution II: guest, unauthorized and authorized cases for every endpoint).
   - It fails if a route uses a parameter it can't resolve, so new routes can't skip coverage (SC-001, research R15).
-- [ ] T034 [P] [US1] Write tests/Feature/Roster/RosterIndexTest.php for `orgs.members.index`:
+- [x] T034 [P] [US1] Write tests/Feature/Roster/RosterIndexTest.php for `orgs.members.index`:
   - The admin sees only their own organization's memberships and open invitations, with status labels.
   - `q` matches name or email without regard to case, and escapes `%`.
   - `role` and `status` filters work, including `status=invited`.
@@ -220,8 +220,8 @@ to the other organization's members return 404.
   - 25 per page, with a stable order.
   - A volunteer gets 403.
   (FR-005, FR-035, FR-036, FR-039)
-- [ ] T035 [P] [US1] Write tests/Feature/Roster/MemberShowTest.php for `orgs.members.show`: the admin sees name, email, phone, role, status and joined date, with no edit fields for personal details (FR-037). A volunteer gets 403, and a membership from another organization gets 404.
-- [ ] T036 [P] [US1] Write tests/Feature/Invitations/IssueInvitationTest.php for `orgs.invitations.store`:
+- [x] T035 [P] [US1] Write tests/Feature/Roster/MemberShowTest.php for `orgs.members.show`: the admin sees name, email, phone, role, status and joined date, with no edit fields for personal details (FR-037). A volunteer gets 403, and a membership from another organization gets 404.
+- [x] T036 [P] [US1] Write tests/Feature/Invitations/IssueInvitationTest.php for `orgs.invitations.store`:
   - Creates an invitation with a lowercased email, a hashed token, a 7-day expiry and the chosen role.
   - Sends `InvitationNotification` on demand (`Notification::assertSentOnDemand`).
   - Refuses an email with a pending, active or inactive membership, or an open invitation (FR-034).
@@ -229,12 +229,12 @@ to the other organization's members return 404.
   - Validation errors for a missing name or an invalid email.
   - A volunteer gets 403.
   (FR-030, FR-031)
-- [ ] T037 [P] [US1] Write tests/Feature/Invitations/ManageInvitationTest.php:
+- [x] T037 [P] [US1] Write tests/Feature/Invitations/ManageInvitationTest.php:
   - `orgs.invitations.resend` replaces the token hash and expiry, and the old token's `invitations.show` reports invalid.
   - `orgs.invitations.destroy` deletes the invitation.
   - Another organization's invitation gets 404.
   (FR-033)
-- [ ] T038 [P] [US1] Write tests/Feature/Invitations/AcceptInvitationNewAccountTest.php for `invitations.show` and `invitations.accept`:
+- [x] T038 [P] [US1] Write tests/Feature/Invitations/AcceptInvitationNewAccountTest.php for `invitations.show` and `invitations.accept`:
   - New email: the setup form has the email fixed and the name pre-filled.
   - Accepting with the account fields creates a **verified** user and an active membership with the invitation's role and `joined_at`, deletes the invitation, signs the user in, and redirects to `orgs.show`.
   - Missing adult confirmation → error and no user (FR-045).
@@ -244,47 +244,59 @@ to the other organization's members return 404.
 
 ### Implementation for User Story 1
 
-- [ ] T039 [US1] Create the migration database/migrations/*_create_invitations_table.php:
+- [x] T039 [US1] Create the migration database/migrations/*_create_invitations_table.php:
   - Columns: `organization_id` with `cascadeOnDelete()`, `invited_by_id` constrained to users, `name`, `email`, `role`, `token_hash` string(64) unique, `expires_at`, timestamps.
   - Index: `unique(['organization_id','email'])`.
   - `down()` drops the table.
   - Run migrate, then rollback and migrate again.
-- [ ] T040 [US1] Create the model app/Models/Invitation.php (`make:model Invitation --factory`):
+- [x] T040 [US1] Create the model app/Models/Invitation.php (`make:model Invitation --factory`):
   - Casts: `role` → `MembershipRole`, `expires_at` → datetime.
   - Relationships: `organization()` and `invitedBy()` BelongsTo.
   - `isExpired(): bool`.
   - `static findByToken(string $plainToken): ?self`, which looks up by `hash('sha256', $plainToken)`.
   Add `invitations()` HasMany to app/Models/Organization.php.
-- [ ] T041 [P] [US1] Write database/factories/InvitationFactory.php with a default 7-day expiry and an `expired()` state. Token hashes are generated from a known plain token that the test can use.
-- [ ] T042 [P] [US1] Create app/Notifications/InvitationNotification.php (`make:notification`). It's queued and receives the organization name, inviter name, plain token, expiry and an `$existingAccount` flag. The mail says "set up your account" or "sign in to accept" and links to `route('invitations.show', $token)`. It must not mention any other organization (contracts/notifications.md).
-- [ ] T043 [US1] Create app/Actions/Invitations/IssueInvitation.php with two methods:
+  *Done: also added `hashToken()` and `regenerateToken()`, which saves a new hash and 7-day expiry and returns the plain token. It mirrors `Organization::regenerateSignupToken()` and serves both issuing and resending.*
+- [x] T041 [P] [US1] Write database/factories/InvitationFactory.php with a default 7-day expiry and an `expired()` state. Token hashes are generated from a known plain token that the test can use.
+  *Done: also added `administrator()` and `withToken(string $plainToken)` states.*
+- [x] T042 [P] [US1] Create app/Notifications/InvitationNotification.php (`make:notification`). It's queued and receives the organization name, inviter name, plain token, expiry and an `$existingAccount` flag. The mail says "set up your account" or "sign in to accept" and links to `route('invitations.show', $token)`. It must not mention any other organization (contracts/notifications.md).
+- [x] T043 [US1] Create app/Actions/Invitations/IssueInvitation.php with two methods:
   - `handle(Organization, User $inviter, string $name, string $email, MembershipRole): Invitation` checks the FR-034 duplicate rule, throws `ValidationException` on `email`, then calls `issue()`.
   - `issue(...)` creates the row with a random 40-character token stored as a SHA-256 hash and `expires_at = now()->addDays(7)`, then sends `InvitationNotification` on demand with `afterCommit()`. ImportRoster reuses it in US6.
-- [ ] T044 [US1] Create app/Actions/Invitations/ResendInvitation.php. It sets a new token hash and expiry, sets `invited_by_id` to the current admin, and re-sends the notification.
-- [ ] T045 [US1] Create app/Actions/Invitations/AcceptInvitation.php for the **new-account path**. In a transaction it:
+  *Done: the token-and-email step is a public `sendLink()` method, so ResendInvitation reuses it instead of duplicating it.*
+- [x] T044 [US1] Create app/Actions/Invitations/ResendInvitation.php. It sets a new token hash and expiry, sets `invited_by_id` to the current admin, and re-sends the notification.
+  *Done: the signature is `handle(Organization, Invitation, User $inviter)`, so the organization name needs no extra query.*
+- [x] T045 [US1] Create app/Actions/Invitations/AcceptInvitation.php for the **new-account path**. In a transaction it:
   - calls `CreateAccount` with `verified: true`;
   - creates an active Membership with the invitation's role and `joined_at=now`;
   - deletes the invitation.
   It returns the membership. (US4 adds the existing-account path.)
-- [ ] T046 [US1] Create app/Actions/Roster/BuildRosterQuery.php with `handle(Organization, ?string $search, ?MembershipRole, ?RosterStatus): Builder`. It returns `DB::query()->fromSub(...)` over a `UNION ALL` of:
+  *Done: if an account already exists for the invited email, the action refuses with an `email` validation error instead of failing on the unique index, and `invitations.show` shows "Sign in to accept" with no setup form. US4 (T098, T099) replaces this with the existing-account path. Covered in AcceptInvitationNewAccountTest.*
+- [x] T046 [US1] Create app/Actions/Roster/BuildRosterQuery.php with `handle(Organization, ?string $search, ?MembershipRole, ?RosterStatus): Builder`. It returns `DB::query()->fromSub(...)` over a `UNION ALL` of:
   - memberships joined to users, excluding unverified pending ones;
   - the organization's open invitations.
   Columns are as listed in data-model.md "Roster entry". It applies case-insensitive `whereLike` with `%` and `_` escaped, plus the role and status filters, and orders by `name`, `kind`, `key`.
-- [ ] T047 [P] [US1] Create the form requests:
+  *Done: `listed_at` is left out because nothing reads it. The order is `name`, `kind`, `key`.*
+- [x] T047 [P] [US1] Create the form requests:
   - app/Http/Requests/RosterFilterRequest.php: `q`, `role` and `status` rules from data-model.md.
   - app/Http/Requests/StoreInvitationRequest.php: `name`, `email`, `role`, with the email lowercased in `prepareForValidation`.
   - app/Http/Requests/AcceptInvitationRequest.php: uses `AccountValidationRules`, without `email`, which comes from the invitation.
   All authorize with `OrganizationPolicy::manageMembers` where an organization is in the route.
-- [ ] T048 [US1] Create app/Http/Controllers/Org/MemberController.php with `index` (paginates `BuildRosterQuery` at 25 per page with the query string) and `show` (eager-loads `user`). Register `orgs.members.index` and `orgs.members.show` in routes/web.php.
-- [ ] T049 [US1] Create app/Http/Controllers/Org/InvitationController.php with `create`, `store`, `resend` and `destroy`, calling the actions from T043 and T044. Register `orgs.invitations.create`, `.store`, `.resend` and `.destroy` in routes/web.php (scoped bindings resolve `{invitation}` through `$organization->invitations()`).
-- [ ] T050 [US1] Create app/Http/Controllers/InvitationAcceptanceController.php with `show` and `accept`, both throttled by `public-forms`. It resolves the token with `Invitation::findByToken` and handles unknown or expired tokens with a message. Register `invitations.show` and `invitations.accept` in routes/web.php.
-- [ ] T051 [P] [US1] Create the views:
+  *Done: authorization is a single `can:manageMembers,organization` middleware on the admin route group, which also covers the GET, resend and cancel routes that have no form request. The form requests' `authorize()` returns true and says so in its PHPDoc.*
+- [x] T048 [US1] Create app/Http/Controllers/Org/MemberController.php with `index` (paginates `BuildRosterQuery` at 25 per page with the query string) and `show` (eager-loads `user`). Register `orgs.members.index` and `orgs.members.show` in routes/web.php.
+  *Done: `{membership}` and `{invitation}` routes use `whereNumber()`, so a non-numeric id returns 404 instead of a PostgreSQL type error.*
+- [x] T049 [US1] Create app/Http/Controllers/Org/InvitationController.php with `create`, `store`, `resend` and `destroy`, calling the actions from T043 and T044. Register `orgs.invitations.create`, `.store`, `.resend` and `.destroy` in routes/web.php (scoped bindings resolve `{invitation}` through `$organization->invitations()`).
+  *Done: resend and cancel redirect back, falling back to the roster, so the administrator keeps their search and page.*
+- [x] T050 [US1] Create app/Http/Controllers/InvitationAcceptanceController.php with `show` and `accept`, both throttled by `public-forms`. It resolves the token with `Invitation::findByToken` and handles unknown or expired tokens with a message. Register `invitations.show` and `invitations.accept` in routes/web.php.
+- [x] T051 [P] [US1] Create the views:
   - resources/views/orgs/members/index.blade.php: GET search and filter form, table, status badges, pagination links, and resend and cancel buttons on invited rows.
   - resources/views/orgs/members/show.blade.php: read-only personal details.
   - resources/views/orgs/invitations/create.blade.php.
   - resources/views/invitations/show.blade.php: setup form, expired message.
-- [ ] T052 [US1] Add the admin links "Roster" and "Invite volunteer" to resources/views/orgs/show.blade.php, behind `@can('manageMembers', $organization)`.
-- [ ] T053 [US1] Run `./vendor/bin/sail artisan test --compact tests/Feature/Roster tests/Feature/Invitations tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: also added resources/views/components/select.blade.php, `RosterStatus::tone()` for badge colours, and `options()` on `MembershipRole` and `RosterStatus`.*
+- [x] T052 [US1] Add the admin links "Roster" and "Invite volunteer" to resources/views/orgs/show.blade.php, behind `@can('manageMembers', $organization)`.
+  *Done: replaced the empty `@stack('admin-links')` slot with the links themselves.*
+- [x] T053 [US1] Run `./vendor/bin/sail artisan test --compact tests/Feature/Roster tests/Feature/Invitations tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: 54 tests pass, plus the full suite (95). Also added tests/Feature/Notifications/InvitationNotificationTest.php for the email's contents, both wordings and escaping. Mutation checks confirmed the wildcard-escaping, scoped-binding and admin-gate tests fail when those protections are removed. Quickstart US1 steps 1–5 pass against the seeded Sail app.*
 
 **Checkpoint**: US1 is complete and demoable on its own (quickstart.md US1).
 
