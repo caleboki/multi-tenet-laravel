@@ -605,19 +605,21 @@ file has exactly the organization's filtered members.
 
 ### Tests for User Story 6 (write first, must fail)
 
-- [ ] T111 [P] [US6] Write tests/Unit/Roster/ParseRosterCsvTest.php (`--unit`) using fixture strings:
+- [x] T111 [P] [US6] Write tests/Unit/Roster/ParseRosterCsvTest.php (`--unit`) using fixture strings:
   - Header columns are matched without regard to case or spaces, and a BOM is stripped.
   - Extra columns are ignored, and blank lines are skipped and not counted.
   - Row numbers start at 2.
   - A missing `name` or `email` column, more than 1,000 rows, and no data rows each throw the exact message from contracts/csv-formats.md.
-- [ ] T112 [P] [US6] Write tests/Unit/Roster/WriteRosterCsvTest.php (`--unit`):
+  *Done: the parser throws `UnexpectedValueException` rather than `ValidationException` (see T115), so these stay framework-free unit tests. Row numbers are physical line numbers, so a blank line in the middle doesn't shift later rows away from what a spreadsheet shows. Also covers trimming, quoted fields, exactly 1,000 rows, an empty file, non-UTF-8 content and a missing file.*
+- [x] T112 [P] [US6] Write tests/Unit/Roster/WriteRosterCsvTest.php (`--unit`):
   - Header `Name,Email,Phone,Role,Status,Date joined`.
   - The output starts with a UTF-8 BOM.
   - Role and status labels.
   - `YYYY-MM-DD` dates, empty when null.
   - Cells starting with `=`, `+`, `-`, `@`, a tab or a carriage return are prefixed with `'`.
   (R11)
-- [ ] T113 [P] [US6] Write tests/Feature/Import/ImportRosterTest.php for `orgs.imports.store`:
+  *Done: `fputcsv` quotes the header cell `"Date joined"` because it contains a space, which is equivalent CSV. Tests read the output back with `fgetcsv` and compare cells.*
+- [x] T113 [P] [US6] Write tests/Feature/Import/ImportRosterTest.php for `orgs.imports.store`:
   - A 200-row file → 200 invitations as Volunteer, with `InvitationNotification` sent on demand 200 times.
   - Mixed file → skip reasons "Missing name", "Invalid email", "Duplicate of row n" and "Already in roster", with row numbers.
   - An email belonging only to another organization is invited, and the report doesn't mention that organization.
@@ -625,32 +627,40 @@ file has exactly the organization's filtered members.
   - A volunteer gets 403.
   - Throttled by `roster-import`.
   (FR-046 to FR-049)
-- [ ] T114 [P] [US6] Write tests/Feature/Roster/ExportRosterTest.php:
+  *Done: also covers the report page (counts and the skipped-rows table), a missing file, and a member who left being invited again.*
+- [x] T114 [P] [US6] Write tests/Feature/Roster/ExportRosterTest.php:
   - `orgs.members.export` streams `text/csv` with filename `{slug}-roster-{YYYY-MM-DD}.csv`.
   - Rows match the `q`, `role` and `status` filters and contain only the organization's entries, including invited ones.
   - `orgs.imports.sample` returns the sample from contracts/csv-formats.md.
   - A volunteer gets 403.
   (FR-050, FR-051)
+  *Done: also checks that the roster's export link carries the current filters, and that volunteers get 403 on the sample file and the import page.*
 
 ### Implementation for User Story 6
 
-- [ ] T115 [P] [US6] Create app/Actions/Roster/ParseRosterCsv.php with `handle(string $path): array`, returning `list<array{row: int, name: string, email: string}>`. It uses `SplFileObject` in CSV mode, applies the header rules and the 1,000-row limit, and throws `ValidationException` on `file` with the contract messages.
-- [ ] T116 [P] [US6] Create app/Actions/Roster/WriteRosterCsv.php with `toStream($handle, iterable $entries): void`. It writes the BOM, header and escaped rows with `fputcsv`.
-- [ ] T117 [US6] Create app/Actions/Roster/ImportRoster.php with `handle(Organization, User $inviter, string $path): array`, returning `array{invited: int, skipped: list<array{row: int, email: ?string, reason: string}>}`. It:
+- [x] T115 [P] [US6] Create app/Actions/Roster/ParseRosterCsv.php with `handle(string $path): array`, returning `list<array{row: int, name: string, email: string}>`. It uses `SplFileObject` in CSV mode, applies the header rules and the 1,000-row limit, and throws `ValidationException` on `file` with the contract messages.
+  *Done, with one change: it throws `UnexpectedValueException` with the contract message, and `ImportRoster` turns that into a `ValidationException` on `file`. `ValidationException::withMessages()` needs the framework booted, which would stop T111 being a unit test. It passes an empty escape character to the CSV functions, which is strict RFC 4180 and avoids PHP 8.4+'s deprecation of the default.*
+- [x] T116 [P] [US6] Create app/Actions/Roster/WriteRosterCsv.php with `toStream($handle, iterable $entries): void`. It writes the BOM, header and escaped rows with `fputcsv`.
+  *Done: also uses an empty escape character in `fputcsv`. Expects entries shaped like `BuildRosterQuery` rows (string role, status and joined_at).*
+- [x] T117 [US6] Create app/Actions/Roster/ImportRoster.php with `handle(Organization, User $inviter, string $path): array`, returning `array{invited: int, skipped: list<array{row: int, email: ?string, reason: string}>}`. It:
   - parses the file;
   - loads the roster's existing emails in **one** query (memberships with status pending, active or inactive joined to users, plus open invitations);
   - validates each row (`email:rfc`, non-empty name);
   - tracks emails already seen in the file;
   - calls `IssueInvitation::issue()` for each valid row inside one `DB::transaction`.
-- [ ] T118 [P] [US6] Create app/Http/Requests/ImportRosterRequest.php: `file` required, `file`, `mimes:csv,txt`, `max:1024`. Authorize with `manageMembers`.
-- [ ] T119 [US6] Create app/Http/Controllers/Org/RosterImportController.php:
+  *Done: a duplicate is reported against the first row with a usable name and email. Added the skip reason "Name too long" for names over 255 characters, the single-invitation limit and the column size. Without it, one long name would fail the whole import.*
+- [x] T118 [P] [US6] Create app/Http/Requests/ImportRosterRequest.php: `file` required, `file`, `mimes:csv,txt`, `max:1024`. Authorize with `manageMembers`.
+  *Done: custom messages make a non-text upload show the contract's "could not be read" message and an oversize file say "The file must be 1 MB or smaller."*
+- [x] T119 [US6] Create app/Http/Controllers/Org/RosterImportController.php:
   - `create`.
   - `store`, throttled by `roster-import`: calls `ImportRoster`, flashes the report, and redirects to `orgs.imports.create`.
   - `sample`: `streamDownload` of the sample.
   Register `orgs.imports.create`, `orgs.imports.store` and `orgs.imports.sample` in routes/web.php.
-- [ ] T120 [US6] Create app/Http/Controllers/Org/MemberExportController.php (invokable). It validates with `RosterFilterRequest`, then streams `BuildRosterQuery` results with `lazy()` through `WriteRosterCsv` via `response()->streamDownload()`. Register `orgs.members.export` in routes/web.php **before** `orgs.members.show`, so `export` isn't bound as a `{membership}`.
-- [ ] T121 [P] [US6] Create resources/views/orgs/imports/create.blade.php: upload form, sample link, and the flashed report with counts and a skipped-rows table. Add "Import" and "Export (current filters)" links to resources/views/orgs/members/index.blade.php.
-- [ ] T122 [US6] Run `./vendor/bin/sail artisan test --compact tests/Unit/Roster tests/Feature/Import tests/Feature/Roster tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: `sample()` takes the Organization parameter, even though it doesn't use it, because implicit binding only happens when the method asks for the model. Without it, the membership middleware got the raw slug and refused the request with a 404.*
+- [x] T120 [US6] Create app/Http/Controllers/Org/MemberExportController.php (invokable). It validates with `RosterFilterRequest`, then streams `BuildRosterQuery` results with `lazy()` through `WriteRosterCsv` via `response()->streamDownload()`. Register `orgs.members.export` in routes/web.php **before** `orgs.members.show`, so `export` isn't bound as a `{membership}`.
+- [x] T121 [P] [US6] Create resources/views/orgs/imports/create.blade.php: upload form, sample link, and the flashed report with counts and a skipped-rows table. Add "Import" and "Export (current filters)" links to resources/views/orgs/members/index.blade.php.
+- [x] T122 [US6] Run `./vendor/bin/sail artisan test --compact tests/Unit/Roster tests/Feature/Import tests/Feature/Roster tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: 290 tests pass in the full suite. Mutation checks confirmed the tests catch a missing formula escape, ignoring the roster, treating people who left as in the roster, a case-sensitive duplicate check, an export that ignores filters, counting blank lines and a missing row limit. Quickstart US6 steps 1–4 pass against the Sail app. The six invitations the walkthrough created were cancelled afterwards. A phone number starting with `+` is exported with a leading apostrophe, as R11's formula rule requires.*
 
 **Checkpoint**: All six user stories work on their own (quickstart.md US6).
 

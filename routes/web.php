@@ -9,8 +9,10 @@ use App\Http\Controllers\Operator\OrganizationSuspensionController;
 use App\Http\Controllers\Org\InvitationController;
 use App\Http\Controllers\Org\JoinRequestController;
 use App\Http\Controllers\Org\MemberController;
+use App\Http\Controllers\Org\MemberExportController;
 use App\Http\Controllers\Org\MembershipController;
 use App\Http\Controllers\Org\OrganizationHomeController;
+use App\Http\Controllers\Org\RosterImportController;
 use App\Http\Controllers\Org\SettingsController;
 use App\Http\Controllers\Org\SignupLinkController;
 use App\Http\Controllers\OrganizationRequestController;
@@ -47,6 +49,7 @@ Route::prefix('orgs/{organization:slug}')
 
         Route::middleware('can:manageMembers,organization')->group(function () {
             Route::get('/members', [MemberController::class, 'index'])->name('members.index');
+            Route::get('/members/export', MemberExportController::class)->name('members.export');
             Route::get('/members/{membership}', [MemberController::class, 'show'])->whereNumber('membership')->name('members.show');
             Route::patch('/members/{membership}', [MemberController::class, 'update'])->whereNumber('membership')->name('members.update');
 
@@ -54,6 +57,10 @@ Route::prefix('orgs/{organization:slug}')
             Route::post('/invitations', [InvitationController::class, 'store'])->name('invitations.store');
             Route::post('/invitations/{invitation}/resend', [InvitationController::class, 'resend'])->whereNumber('invitation')->name('invitations.resend');
             Route::delete('/invitations/{invitation}', [InvitationController::class, 'destroy'])->whereNumber('invitation')->name('invitations.destroy');
+
+            Route::get('/imports/create', [RosterImportController::class, 'create'])->name('imports.create');
+            Route::get('/imports/sample', [RosterImportController::class, 'sample'])->name('imports.sample');
+            Route::post('/imports', [RosterImportController::class, 'store'])->middleware('throttle:roster-import')->name('imports.store');
 
             Route::get('/join-requests', [JoinRequestController::class, 'index'])->name('join-requests.index');
             Route::post('/join-requests/{membership}/approve', [JoinRequestController::class, 'approve'])->whereNumber('membership')->name('join-requests.approve');
