@@ -11,21 +11,26 @@ command runs through Sail (Constitution V). Route names refer to
 ## Prerequisites
 
 - Docker running, and Sail containers up: `./vendor/bin/sail up -d`
-- **APP_URL must match the Sail port.** `.env` currently has `APP_URL=http://localhost:8000`,
-  but Sail serves on port 80 unless `APP_PORT` is set. Links in emails (invitations,
-  verification, password reset) are built from `APP_URL`. Either:
-  - set `APP_URL=http://localhost`, or
-  - add `APP_PORT=8000` and restart Sail.
+- **APP_URL must match the Sail port.** Links in emails (invitations, verification, password
+  reset) are built from `APP_URL`. `.env` and `.env.example` set `APP_URL=http://localhost`,
+  which matches Sail's default port 80. If you set `APP_PORT`, change `APP_URL` to match (for
+  example `http://localhost:8000`) and restart Sail.
 
 ## Setup
 
 ```bash
 ./vendor/bin/sail composer install
 ./vendor/bin/sail artisan migrate:fresh --seed
-./vendor/bin/sail npm install
+./vendor/bin/sail npm ci
 ./vendor/bin/sail npm run build
 ./vendor/bin/sail artisan queue:listen     # separate terminal: sends queued emails
 ```
+
+Install the JavaScript packages with `./vendor/bin/sail npm ci`, inside Sail. Vite's bundler
+needs a binary for the container's platform (`@rolldown/binding-linux-x64-gnu`). A
+`node_modules` folder installed on macOS doesn't have it, so the build fails until `npm ci`
+reinstalls it from the lockfile. After that, run Vite through Sail as well
+(`./vendor/bin/sail npm run dev` for live reloading on port 5173).
 
 Emails are written to `storage/logs/laravel.log` (`MAIL_MAILER=log`). To follow them:
 
