@@ -48,15 +48,15 @@ on its own.
 **Purpose**: Approval gate, environment fix, and Fortify installation
 
 - [x] T001 Confirm the user has approved the new top-level `app/` folders (`Actions`, `Console`, `Enums`, `Listeners`, `Notifications`, `Policies`, `Rules`) listed under Complexity Tracking in specs/001-multi-tenant-volunteers/plan.md. **Approved by the user on 2026-10-05.**
-- [ ] T002 [P] Set `APP_URL=http://localhost` in .env and .env.example so links in emails match the Sail port 80 (quickstart.md Prerequisites).
-- [ ] T003 Install Fortify with `./vendor/bin/sail composer require laravel/fortify:^1.40`, then `./vendor/bin/sail artisan fortify:install --no-interaction`. Confirm `App\Providers\FortifyServiceProvider` is registered in bootstrap/providers.php.
-- [ ] T004 If `fortify:install` published a two-factor migration (`database/migrations/*_add_two_factor_columns_to_users_table.php`), delete it. Two-step sign-in is out of scope (spec Clarifications).
-- [ ] T005 Configure config/fortify.php:
+- [x] T002 [P] Set `APP_URL=http://localhost` in .env and .env.example so links in emails match the Sail port 80 (quickstart.md Prerequisites).
+- [x] T003 Install Fortify with `./vendor/bin/sail composer require laravel/fortify:^1.40`, then `./vendor/bin/sail artisan fortify:install --no-interaction`. Confirm `App\Providers\FortifyServiceProvider` is registered in bootstrap/providers.php.
+- [x] T004 If `fortify:install` published a two-factor migration (`database/migrations/*_add_two_factor_columns_to_users_table.php`), delete it. Two-step sign-in is out of scope (spec Clarifications). *Done: also deleted the published `*_create_passkeys_table.php` migration. Passkeys are another sign-in method, and the spec allows email and password only.*
+- [x] T005 Configure config/fortify.php:
   - `'home' => '/dashboard'`
   - `'lowercase_usernames' => true`
   - `'views' => true`
   - `features` set to exactly `Features::resetPasswords()`, `Features::emailVerification()`, `Features::updateProfileInformation()` and `Features::updatePasswords()`. Registration and two-factor stay off (research R3).
-- [ ] T006 Delete app/Actions/Fortify/CreateNewUser.php and remove the `Fortify::createUsersUsing(...)` call from app/Providers/FortifyServiceProvider.php. Registration is disabled (R3).
+- [x] T006 Delete app/Actions/Fortify/CreateNewUser.php and remove the `Fortify::createUsersUsing(...)` call from app/Providers/FortifyServiceProvider.php. Registration is disabled (R3). *Done: also removed the unused two-factor redirect and the `two-factor` and `passkeys` rate limiters from the provider and config/fortify.php.*
 
 ---
 
@@ -69,21 +69,21 @@ Every story depends on these.
 
 ### Tests for Foundational (write first, must fail)
 
-- [ ] T007 [P] Write tests/Feature/Auth/AuthenticationTest.php:
+- [x] T007 [P] Write tests/Feature/Auth/AuthenticationTest.php:
   - Login with a mixed-case email signs in the lowercase-stored user.
   - A wrong password fails.
   - The sixth attempt within a minute gets 429.
   - Logout works.
   - A guest opening `/dashboard` is redirected to `login`.
-- [ ] T008 [P] Write tests/Feature/Auth/PasswordResetTest.php:
+- [x] T008 [P] Write tests/Feature/Auth/PasswordResetTest.php:
   - The forgot-password form always shows the same message, whether or not the email exists.
   - `ResetPassword` is sent with `Notification::fake()` only for real accounts.
   - The reset link sets a new password.
-- [ ] T009 [P] Write tests/Feature/Auth/EmailVerificationTest.php:
+- [x] T009 [P] Write tests/Feature/Auth/EmailVerificationTest.php:
   - An unverified user sees `verification.notice`.
   - The signed verify link sets `email_verified_at` and dispatches `Illuminate\Auth\Events\Verified`.
   - Resend is throttled at 6 per minute.
-- [ ] T010 [P] Write tests/Feature/Membership/EnsureActiveMembershipTest.php against `orgs.show`:
+- [x] T010 [P] Write tests/Feature/Membership/EnsureActiveMembershipTest.php against `orgs.show`:
   - Guest → redirect to login.
   - Unverified member → verification notice.
   - Non-member → 404.
@@ -92,7 +92,8 @@ Every story depends on these.
   - Active member of a `suspended` organization → 403 with the suspended view.
   - Active member of an active organization → 200, showing the organization name and their role
     (FR-003, FR-004, FR-013, FR-016).
-- [ ] T011 [P] Write tests/Feature/Auth/CreateAccountTest.php for `App\Actions\Accounts\CreateAccount`:
+  *Done: also added tests/Feature/Policies/OrganizationPolicyTest.php covering the full `view` and `manageMembers` permission matrix, per the testing-best-practices skill. tests/TestCase.php calls `withoutVite()` so views render without a frontend build.*
+- [x] T011 [P] Write tests/Feature/Auth/CreateAccountTest.php for `App\Actions\Accounts\CreateAccount`:
   - Stores a lowercased email, a hashed password, an optional phone and `adult_confirmed_at`.
   - Refuses creation when adult confirmation is missing (FR-045).
   - Fires `Illuminate\Auth\Events\Registered` only when `verified: false`.
@@ -100,84 +101,86 @@ Every story depends on these.
 
 ### Implementation for Foundational
 
-- [ ] T012 [P] Create enums with `make:enum`, following the values and labels in data-model.md:
+- [x] T012 [P] Create enums with `make:enum`, following the values and labels in data-model.md:
   - app/Enums/OrganizationStatus.php: Pending, Active, Rejected, Suspended.
   - app/Enums/MembershipRole.php: Administrator, Volunteer, with a `label(): string` method.
   - app/Enums/MembershipStatus.php: Pending, Active, Inactive, Left.
   - app/Enums/RosterStatus.php: Invited, Pending, Active, Inactive, Left, with a `label()`
     method ("Pending approval" for Pending) and `fromMembership(MembershipStatus): self`.
-- [ ] T013 Create the migration database/migrations/*_create_organizations_table.php with the columns in data-model.md: `name`, `slug` unique, `contact_email`, `status` indexed with default `pending`, `rejection_reason`, `requested_by_id` constrained to users, `signup_token` nullable unique, `self_signup_enabled` default true, and timestamps.
+- [x] T013 Create the migration database/migrations/*_create_organizations_table.php with the columns in data-model.md: `name`, `slug` unique, `contact_email`, `status` indexed with default `pending`, `rejection_reason`, `requested_by_id` constrained to users, `signup_token` nullable unique, `self_signup_enabled` default true, and timestamps.
   - In `up()`, add the partial unique index with `DB::statement("CREATE UNIQUE INDEX organizations_name_lower_unique ON organizations (lower(name)) WHERE status <> 'rejected'")`.
   - Document in a PHPDoc block why raw SQL is needed: the schema builder has no partial-index API (research R6, Constitution I).
   - `down()` drops the table.
-- [ ] T014 Create the migration database/migrations/*_add_tenancy_columns_to_users_table.php (after T013) adding `phone` string(32) nullable, `adult_confirmed_at` timestamp nullable, `is_platform_operator` boolean default false, and `last_organization_id` foreignId nullable constrained to organizations with `nullOnDelete()`. `down()` drops the foreign key, then the columns.
-- [ ] T015 Create the migration database/migrations/*_create_memberships_table.php:
+- [x] T014 Create the migration database/migrations/*_add_tenancy_columns_to_users_table.php (after T013) adding `phone` string(32) nullable, `adult_confirmed_at` timestamp nullable, `is_platform_operator` boolean default false, and `last_organization_id` foreignId nullable constrained to organizations with `nullOnDelete()`. `down()` drops the foreign key, then the columns.
+- [x] T015 Create the migration database/migrations/*_create_memberships_table.php:
   - Columns: `organization_id` with `cascadeOnDelete()`, `user_id` with `cascadeOnDelete()`, `role`, `status`, `requested_at` nullable, `joined_at` nullable, timestamps.
   - Indexes: `unique(['organization_id','user_id'])`, `index(['organization_id','status'])`, `index('user_id')`.
   - `down()` drops the table.
-- [ ] T016 Run `./vendor/bin/sail artisan migrate` and `./vendor/bin/sail artisan migrate:rollback --step=3` then `./vendor/bin/sail artisan migrate` to prove the T013–T015 `down()` methods work (quality gate 4).
-- [ ] T017 [P] Create the model app/Models/Organization.php (`make:model Organization --factory`):
+- [x] T016 Run `./vendor/bin/sail artisan migrate` and `./vendor/bin/sail artisan migrate:rollback --step=3` then `./vendor/bin/sail artisan migrate` to prove the T013–T015 `down()` methods work (quality gate 4).
+- [x] T017 [P] Create the model app/Models/Organization.php (`make:model Organization --factory`):
   - Mass-assignable attributes: `name` and `contact_email`.
   - Casts: `status` → `OrganizationStatus`, `self_signup_enabled` → boolean.
   - Relationships: `memberships()` HasMany, `requester()` BelongsTo User via `requested_by_id`.
-  - `getRouteKeyName()` returns `slug`.
+  - `getRouteKeyName()` returns `slug`. *Done with the Laravel 13 `#[RouteKey('slug')]` attribute, matching the attribute style of `User`.*
   - Local scope `active()`.
   - `regenerateSignupToken(): void`: sets a random 40-character `signup_token` and saves. Used by US3 approval and US5 regeneration.
-- [ ] T018 [P] Create the model app/Models/Membership.php (`make:model Membership --factory`):
+- [x] T018 [P] Create the model app/Models/Membership.php (`make:model Membership --factory`):
   - Casts: `role` → `MembershipRole`, `status` → `MembershipStatus`, `requested_at` and `joined_at` → datetime.
   - Relationships: `organization()` and `user()` BelongsTo.
   - `#[Scope]` local scopes `active()`, `administrators()` (active Administrators) and `awaitingApproval()` (`status=pending` with a verified user, research R9).
   - Helpers `isAdministrator(): bool` and `isActive(): bool`.
-- [ ] T019 Extend app/Models/User.php:
+- [x] T019 Extend app/Models/User.php:
   - Implement `MustVerifyEmail`.
   - Add `phone` to `#[Fillable]`. Never add `adult_confirmed_at`, `is_platform_operator` or `last_organization_id`.
   - Casts: `adult_confirmed_at` → datetime, `is_platform_operator` → boolean.
   - Relationships: `memberships()` HasMany, `lastOrganization()` BelongsTo. Organizations are reached through `memberships.organization`; no BelongsToMany, because nothing needs it (Constitution IV).
   - `membershipIn(Organization): ?Membership`: a plain indexed lookup with no caching. A cached value would go stale when a test reuses one user object across requests (for example T101: deactivate, then expect 404).
-- [ ] T020 [P] Write the factories:
+- [x] T020 [P] Write the factories:
   - database/factories/OrganizationFactory.php: unique company name, slug from the name, `contact_email`, a `requested_by_id` user, and states `pending()`, `active()` (sets `signup_token`), `rejected()` (with a reason) and `suspended()`.
   - database/factories/MembershipFactory.php: states `administrator()`, `volunteer()`, `active()` (sets `joined_at`), `pending()` (sets `requested_at`), `inactive()` and `left()`.
-- [ ] T021 [P] Update database/factories/UserFactory.php: set `adult_confirmed_at => now()` by default, and add an `operator()` state that sets `is_platform_operator => true`.
-- [ ] T022 Create app/Actions/Accounts/CreateAccount.php (`make:class`) with `handle(array $attributes, bool $verified): User`. `$attributes` is shaped `array{name: string, email: string, password: string, phone?: ?string}`. It lowercases the email, sets `adult_confirmed_at`, marks the email verified when `$verified`, and fires `Registered` when not verified. Make T011 pass.
-- [ ] T023 Create the trait app/Actions/Fortify/AccountValidationRules.php alongside the published PasswordValidationRules. It provides `accountRules(): array` for `name`, `email` (`email:rfc`, `unique:users,email`), `password` (via `passwordRules()`), `phone` (nullable, max 32, regex `/^[0-9 +()\-]+$/`) and `adult_confirmation` (`accepted`), per data-model.md Validation summary. Custom message for `email.unique`: "An account with this email already exists. Sign in to continue."
-- [ ] T024 Configure app/Providers/AppServiceProvider.php `boot()`:
+- [x] T021 [P] Update database/factories/UserFactory.php: set `adult_confirmed_at => now()` by default, and add an `operator()` state that sets `is_platform_operator => true`.
+- [x] T022 Create app/Actions/Accounts/CreateAccount.php (`make:class`) with `handle(array $attributes, bool $verified): User`. `$attributes` is shaped `array{name: string, email: string, password: string, phone?: ?string}`. It lowercases the email, sets `adult_confirmed_at`, marks the email verified when `$verified`, and fires `Registered` when not verified. Make T011 pass. *Done: the signature is `handle(array $attributes, bool $adultConfirmed, bool $verified)`, so the action itself refuses an account without adult confirmation (FR-045) even if a caller skips validation. The trait in T023 also provides `accountMessages()`.*
+- [x] T023 Create the trait app/Actions/Fortify/AccountValidationRules.php alongside the published PasswordValidationRules. It provides `accountRules(): array` for `name`, `email` (`email:rfc`, `unique:users,email`), `password` (via `passwordRules()`), `phone` (nullable, max 32, regex `/^[0-9 +()\-]+$/`) and `adult_confirmation` (`accepted`), per data-model.md Validation summary. Custom message for `email.unique`: "An account with this email already exists. Sign in to continue."
+- [x] T024 Configure app/Providers/AppServiceProvider.php `boot()`:
   - `Password::defaults()`: min 8, plus `uncompromised()` only when `app()->isProduction()`.
   - `RateLimiter::for('public-forms')`: 10 per minute by IP.
   - `RateLimiter::for('roster-import')`: 5 per minute by user id.
   - `Gate::define('operate-platform', ...)` checking `is_platform_operator`.
   - `Model::preventLazyLoading(! app()->isProduction())`, to catch N+1 queries in tests.
   (research R13, R14)
-- [ ] T025 [P] Create the base Blade layouts and components (Tailwind, labelled inputs, visible focus states):
+- [x] T025 [P] Create the base Blade layouts and components (Tailwind, labelled inputs, visible focus states):
   - resources/views/layouts/guest.blade.php.
   - resources/views/layouts/app.blade.php: header showing the current organization name on every authenticated page (FR-023), a profile link and a logout form. On `/orgs/...` pages the current organization is the one in the URL. On other pages (dashboard, profile, operator) it is the user's `lastOrganization`, if `OrganizationPolicy::view` still allows it. Otherwise "No organization selected".
   - resources/views/components/flash.blade.php.
   - resources/views/components/input.blade.php.
   - resources/views/components/status-badge.blade.php.
-- [ ] T026 [P] Create the auth views resources/views/auth/login.blade.php, forgot-password.blade.php, reset-password.blade.php and verify-email.blade.php, and register them in app/Providers/FortifyServiceProvider.php with `Fortify::loginView`, `requestPasswordResetLinkView`, `resetPasswordView` and `verifyEmailView`. Make T007–T009 pass.
-- [ ] T027 Create app/Policies/OrganizationPolicy.php (`make:policy OrganizationPolicy --model=Organization`) with:
+  *Done: also added resources/views/components/button.blade.php. The current organization comes from a view composer in AppServiceProvider, keeping queries out of Blade. The header's profile link is added in T068, when the `profile.edit` route exists.*
+- [x] T026 [P] Create the auth views resources/views/auth/login.blade.php, forgot-password.blade.php, reset-password.blade.php and verify-email.blade.php, and register them in app/Providers/FortifyServiceProvider.php with `Fortify::loginView`, `requestPasswordResetLinkView`, `resetPasswordView` and `verifyEmailView`. Make T007–T009 pass. *Done: both Fortify reset-link responses are bound to app/Http/Responses/PasswordResetLinkRequestedResponse.php, so the form gives the same message whether or not the account exists (contracts/routes.md). The flash component translates Fortify status keys such as `verification-link-sent`.*
+- [x] T027 Create app/Policies/OrganizationPolicy.php (`make:policy OrganizationPolicy --model=Organization`) with:
   - `view(User, Organization): Response`:
     - active membership in an active organization → `Response::allow()`;
     - active membership in a suspended organization → `Response::deny(code: 'organization-suspended')`;
     - anything else → `Response::denyAsNotFound()` (FR-004).
   - `manageMembers(User, Organization): bool`: true only for an active Administrator membership.
-- [ ] T028 Create app/Http/Middleware/EnsureActiveMembership.php (`make:middleware`), after T027:
+- [x] T028 Create app/Http/Middleware/EnsureActiveMembership.php (`make:middleware`), after T027:
   - Call `Gate::inspect('view', $organization)`. If allowed, continue.
   - If denied with code `organization-suspended`, return a 403 response rendering resources/views/orgs/suspended.blade.php.
   - Any other denial: abort 404. The middleware makes no membership checks of its own (Constitution I).
   - Register the alias `member` in bootstrap/app.php.
-- [ ] T029 Define the route skeleton in routes/web.php:
+- [x] T029 Define the route skeleton in routes/web.php:
   - `GET /dashboard` named `dashboard` with `auth`.
   - A group with prefix `orgs/{organization:slug}`, name `orgs.`, middleware `['auth','verified','member']` and `->scopeBindings()`.
   - A group with prefix `operator`, name `operator.`, middleware `['auth','verified','can:operate-platform']`.
   - `GET /` inside the `orgs.` group named `orgs.show`.
   (contracts/routes.md)
-- [ ] T030 Create app/Http/Controllers/Org/OrganizationHomeController.php (invokable) and resources/views/orgs/show.blade.php. It shows the organization name and the viewer's role. For administrators it renders an admin navigation slot that later stories fill (FR-016). Also create resources/views/errors/403.blade.php: "You don't have access to this page", with a link to `orgs.show` when the URL has an `{organization}` (spec edge case). Make T010 pass.
-- [ ] T031 Create app/Http/Controllers/DashboardController.php (invokable) and resources/views/dashboard.blade.php:
+- [x] T030 Create app/Http/Controllers/Org/OrganizationHomeController.php (invokable) and resources/views/orgs/show.blade.php. It shows the organization name and the viewer's role. For administrators it renders an admin navigation slot that later stories fill (FR-016). Also create resources/views/errors/403.blade.php: "You don't have access to this page", with a link to `orgs.show` when the URL has an `{organization}` (spec edge case). Make T010 pass.
+- [x] T031 Create app/Http/Controllers/DashboardController.php (invokable) and resources/views/dashboard.blade.php:
   - If the user has exactly one active membership in an active organization, redirect to its `orgs.show`.
   - Otherwise list the active organizations.
   - Show a "verify your email" banner when the user is unverified.
   - Later stories add sections.
-- [ ] T032 Write database/seeders/DatabaseSeeder.php to create the quickstart.md seeded data (password `password`):
+  *Done: the redirect applies only to verified users. Unverified users stay on the dashboard and see the verification banner.*
+- [x] T032 Write database/seeders/DatabaseSeeder.php to create the quickstart.md seeded data (password `password`):
   - Operator.
   - Food Bank North and River Cleanup, both active, each with an admin.
   - A Food Bank North volunteer.
