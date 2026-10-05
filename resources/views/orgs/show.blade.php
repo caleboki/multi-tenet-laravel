@@ -24,6 +24,16 @@
                         Invite volunteer
                     </a>
                 </li>
+                <li>
+                    <a href="{{ route('orgs.join-requests.index', $organization) }}" class="rounded-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
+                        Join requests ({{ $joinRequestCount }})
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ route('orgs.settings.edit', $organization) }}" class="rounded-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
+                        Settings
+                    </a>
+                </li>
             </ul>
         </nav>
     @endcan

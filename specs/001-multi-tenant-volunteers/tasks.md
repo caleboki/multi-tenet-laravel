@@ -314,8 +314,8 @@ edit their profile and gets 403 on the roster.
 
 ### Tests for User Story 2 (write first, must fail)
 
-- [ ] T054 [P] [US2] Write tests/Feature/JoinRequests/JoinPageTest.php for `join.show`: it shows the organization name for a valid token. An unknown token shows "no longer valid". An organization that isn't active, or has self sign-up off, shows "not accepting sign-ups" (FR-025).
-- [ ] T055 [P] [US2] Write tests/Feature/JoinRequests/SubmitJoinRequestTest.php for `join.store`:
+- [x] T054 [P] [US2] Write tests/Feature/JoinRequests/JoinPageTest.php for `join.show`: it shows the organization name for a valid token. An unknown token shows "no longer valid". An organization that isn't active, or has self sign-up off, shows "not accepting sign-ups" (FR-025).
+- [x] T055 [P] [US2] Write tests/Feature/JoinRequests/SubmitJoinRequestTest.php for `join.store`:
   - A guest with account fields gets a new **unverified** user, is signed in, and gets a `pending` membership with `requested_at`. `VerifyEmail` is sent, and `JoinRequestReceived` is **not** sent yet.
   - Adult confirmation is required.
   - A signed-in verified user gets a pending membership, and the admins are notified immediately.
@@ -326,44 +326,56 @@ edit their profile and gets 403 on the roster.
   - After a decline, a new request is allowed.
   - Throttled.
   (FR-026, FR-034, FR-041, FR-045, edge cases)
-- [ ] T056 [P] [US2] Write tests/Feature/JoinRequests/VerificationReleaseTest.php: dispatching `Verified` for a user with pending memberships sends `JoinRequestReceived` to every active Administrator of those organizations, and to no one else (R9).
-- [ ] T057 [P] [US2] Write tests/Feature/JoinRequests/ReviewJoinRequestTest.php:
+  *Done: also covers a person with an open invitation (refused, per FR-034, with no account created for a guest), organizations not accepting sign-ups, and a regression test showing that verifying the email afterwards leads to the dashboard rather than back to the sign-up page.*
+- [x] T056 [P] [US2] Write tests/Feature/JoinRequests/VerificationReleaseTest.php: dispatching `Verified` for a user with pending memberships sends `JoinRequestReceived` to every active Administrator of those organizations, and to no one else (R9).
+- [x] T057 [P] [US2] Write tests/Feature/JoinRequests/ReviewJoinRequestTest.php:
   - `orgs.join-requests.index` lists only verified pending requests, paginated.
   - Approve → active with `joined_at`, and `JoinRequestApproved` is sent.
   - Decline (`destroy`) → the membership row is deleted, and `JoinRequestDeclined` is sent.
   - A volunteer gets 403.
   (FR-027, FR-028)
-- [ ] T058 [P] [US2] Write tests/Feature/Auth/ProfileTest.php:
+  *Done: approving or declining a membership that isn't a verified pending request returns 409 and changes nothing, so an administrator can't delete an active member through the decline route.*
+- [x] T058 [P] [US2] Write tests/Feature/Auth/ProfileTest.php:
   - `profile.edit` renders.
   - `user-profile-information.update` changes `name` and `phone` and ignores `email`.
   - `user-password.update` requires `current_password`.
   (FR-043)
-- [ ] T059 [P] [US2] Write tests/Feature/Membership/VolunteerAccessTest.php: an active volunteer gets 200 on `orgs.show` and 403 on `orgs.join-requests.index`, `orgs.join-requests.approve` and `orgs.settings.edit` (FR-016; US2 scenario 5). The roster and member-page 403 checks live in US1 (T034, T035), so this story doesn't depend on US1.
+- [x] T059 [P] [US2] Write tests/Feature/Membership/VolunteerAccessTest.php: an active volunteer gets 200 on `orgs.show` and 403 on `orgs.join-requests.index`, `orgs.join-requests.approve` and `orgs.settings.edit` (FR-016; US2 scenario 5). The roster and member-page 403 checks live in US1 (T034, T035), so this story doesn't depend on US1.
+  *Done: also added tests/Feature/Organizations/OrganizationSettingsTest.php (the administrator sees the sign-up link, for T069), tests/Feature/JoinRequests/JoinRequestStatusTest.php (the dashboard section from T071), and content and escaping tests for the three new notifications under tests/Feature/Notifications.*
 
 ### Implementation for User Story 2
 
-- [ ] T060 [US2] Add `acceptsSignups(): bool` (active and `self_signup_enabled`) to app/Models/Organization.php.
-- [ ] T061 [P] [US2] Create the queued notifications per contracts/notifications.md:
+- [x] T060 [US2] Add `acceptsSignups(): bool` (active and `self_signup_enabled`) to app/Models/Organization.php.
+  *Done: the model also defaults `self_signup_enabled` to true, matching the column, so a newly created organization in memory gives the right answer.*
+- [x] T061 [P] [US2] Create the queued notifications per contracts/notifications.md:
   - app/Notifications/JoinRequestReceived.php
   - app/Notifications/JoinRequestApproved.php
   - app/Notifications/JoinRequestDeclined.php
-- [ ] T062 [US2] Create app/Actions/Memberships/RequestToJoin.php with `handle(Organization, User): Membership`:
+- [x] T062 [US2] Create app/Actions/Memberships/RequestToJoin.php with `handle(Organization, User): Membership`:
   - Applies the duplicate rule (FR-034).
   - Reuses a `left` row, setting it to `pending` with `requested_at`.
   - If the user is verified, sends `JoinRequestReceived` to `$organization->memberships()->administrators()` users.
-- [ ] T063 [P] [US2] Create app/Actions/Memberships/ApproveJoinRequest.php (status `active`, `joined_at`, notify) and app/Actions/Memberships/DeclineJoinRequest.php (delete the row, notify on demand to the user's email).
-- [ ] T064 [US2] Create app/Listeners/SendPendingRequestNotifications.php (`make:listener --event=Illuminate\\Auth\\Events\\Verified`). For each of the user's pending memberships, it notifies that organization's active Administrators with `JoinRequestReceived`. US3 adds organization requests. It relies on event discovery.
-- [ ] T065 [P] [US2] Create app/Http/Requests/StoreJoinRequest.php. It applies `AccountValidationRules` only when the request is from a guest, and lowercases the email.
-- [ ] T066 [US2] Create app/Http/Controllers/JoinController.php with `show` and `store` (throttle `public-forms`). It finds the organization by `signup_token`. For guests, `show` sets the intended URL (`redirect()->setIntendedUrl(url()->current())`) so Fortify returns them here after login. `store` calls `CreateAccount` with `verified: false` for guests, signs them in, then calls `RequestToJoin` and redirects to `dashboard`. Register `join.show` and `join.store` in routes/web.php.
-- [ ] T067 [US2] Create app/Http/Controllers/Org/JoinRequestController.php with `index` (`awaitingApproval()` with `user`, paginated), `approve` and `destroy`. Register `orgs.join-requests.index`, `.approve` and `.destroy` in routes/web.php.
-- [ ] T068 [US2] Update app/Actions/Fortify/UpdateUserProfileInformation.php to validate and update only `name` and `phone`. Create app/Http/Controllers/ProfileController.php (`edit`) and resources/views/profile/edit.blade.php with forms posting to `user-profile-information.update` and `user-password.update`. Register `profile.edit` in routes/web.php.
-- [ ] T069 [US2] Create app/Http/Controllers/Org/SettingsController.php with `edit` only for now, and resources/views/orgs/settings/edit.blade.php showing the sign-up link (`route('join.show', $organization->signup_token)`) with a copy-friendly read-only input. Register `orgs.settings.edit`. US5 adds updates.
-- [ ] T070 [P] [US2] Create the views:
+  *Done: an open invitation for the person's email also blocks the request (FR-034). Administrators are found with one query, and `notifyAdministrators()` is public so the T064 listener reuses it.*
+- [x] T063 [P] [US2] Create app/Actions/Memberships/ApproveJoinRequest.php (status `active`, `joined_at`, notify) and app/Actions/Memberships/DeclineJoinRequest.php (delete the row, notify on demand to the user's email).
+  *Done: both actions take the organization from the route and refuse with 409 unless `Membership::isAwaitingApproval()` holds (pending and verified). The decline email goes to the user directly with `$user->notify()`, because the account still exists.*
+- [x] T064 [US2] Create app/Listeners/SendPendingRequestNotifications.php (`make:listener --event=Illuminate\\Auth\\Events\\Verified`). For each of the user's pending memberships, it notifies that organization's active Administrators with `JoinRequestReceived`. US3 adds organization requests. It relies on event discovery.
+- [x] T065 [P] [US2] Create app/Http/Requests/StoreJoinRequest.php. It applies `AccountValidationRules` only when the request is from a guest, and lowercases the email.
+- [x] T066 [US2] Create app/Http/Controllers/JoinController.php with `show` and `store` (throttle `public-forms`). It finds the organization by `signup_token`. For guests, `show` sets the intended URL (`redirect()->setIntendedUrl(url()->current())`) so Fortify returns them here after login. `store` calls `CreateAccount` with `verified: false` for guests, signs them in, then calls `RequestToJoin` and redirects to `dashboard`. Register `join.show` and `join.store` in routes/web.php.
+  *Done: only `store` is throttled, matching contracts/routes.md. Guest account creation and the request run in one transaction, and `CreateAccount` now fires `Registered` after commit, so a refused request sends no verification email. An active member opening the link is redirected to the organization (spec edge case). `store` clears the stored return URL.*
+- [x] T067 [US2] Create app/Http/Controllers/Org/JoinRequestController.php with `index` (`awaitingApproval()` with `user`, paginated), `approve` and `destroy`. Register `orgs.join-requests.index`, `.approve` and `.destroy` in routes/web.php.
+  *Done: approve and decline redirect back, falling back to the list.*
+- [x] T068 [US2] Update app/Actions/Fortify/UpdateUserProfileInformation.php to validate and update only `name` and `phone`. Create app/Http/Controllers/ProfileController.php (`edit`) and resources/views/profile/edit.blade.php with forms posting to `user-profile-information.update` and `user-password.update`. Register `profile.edit` in routes/web.php.
+  *Done: the action reuses the `name` and `phone` rules and messages from `AccountValidationRules`. Added a Profile link to the header, flash messages for Fortify's `profile-information-updated` and `password-updated` statuses, and a `bag` prop on `x-input` for the named error bags.*
+- [x] T069 [US2] Create app/Http/Controllers/Org/SettingsController.php with `edit` only for now, and resources/views/orgs/settings/edit.blade.php showing the sign-up link (`route('join.show', $organization->signup_token)`) with a copy-friendly read-only input. Register `orgs.settings.edit`. US5 adds updates.
+- [x] T070 [P] [US2] Create the views:
   - resources/views/join/show.blade.php: account fields for guests with an "Already have an account? Sign in" link to `login`, a "request to join" button for signed-in users, and an invalid / not-accepting message.
   - resources/views/orgs/join-requests/index.blade.php.
   Add a "Join requests" link with a count, and a "Settings" link, to resources/views/orgs/show.blade.php.
-- [ ] T071 [US2] Add a "Your join requests" section (organization name and "awaiting approval" or "verify your email first") to resources/views/dashboard.blade.php and app/Http/Controllers/DashboardController.php.
-- [ ] T072 [US2] Run `./vendor/bin/sail artisan test --compact tests/Feature/JoinRequests tests/Feature/Auth/ProfileTest.php tests/Feature/Membership/VolunteerAccessTest.php tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: the 18+ checkbox is now resources/views/components/adult-confirmation.blade.php, shared with the invitation page. Also added resources/views/errors/409.blade.php for the 409 responses.*
+- [x] T071 [US2] Add a "Your join requests" section (organization name and "awaiting approval" or "verify your email first") to resources/views/dashboard.blade.php and app/Http/Controllers/DashboardController.php.
+  *Done: the dashboard loads all of the user's memberships with their organizations in one query and splits them into active organizations and pending requests.*
+- [x] T072 [US2] Run `./vendor/bin/sail artisan test --compact tests/Feature/JoinRequests tests/Feature/Auth/ProfileTest.php tests/Feature/Membership/VolunteerAccessTest.php tests/Feature/TenantIsolationTest.php` until it is green.
+  *Done: 146 tests pass in the full suite. Mutation checks confirmed the tests catch notifying before verification, firing `Registered` before commit, declining a non-request, and notifying non-administrators. Quickstart US2 steps 1–5 pass against the Sail app.*
 
 **Checkpoint**: US1 and US2 both work on their own (quickstart.md US2).
 

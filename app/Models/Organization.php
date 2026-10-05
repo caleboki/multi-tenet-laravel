@@ -22,6 +22,15 @@ class Organization extends Model
     use HasFactory;
 
     /**
+     * The model's default values for attributes, matching the column defaults.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'self_signup_enabled' => true,
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -71,6 +80,14 @@ class Organization extends Model
     protected function active(Builder $query): void
     {
         $query->where('status', OrganizationStatus::Active);
+    }
+
+    /**
+     * Determine whether people can currently ask to join through the sign-up link (FR-010, FR-029).
+     */
+    public function acceptsSignups(): bool
+    {
+        return $this->status === OrganizationStatus::Active && $this->self_signup_enabled;
     }
 
     /**

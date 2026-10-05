@@ -26,10 +26,16 @@
                     </p>
                 </div>
 
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <x-button variant="secondary">Sign out</x-button>
-                </form>
+                <div class="flex items-center gap-4">
+                    <a href="{{ route('profile.edit') }}" class="rounded-sm text-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
+                        Profile
+                    </a>
+
+                    <form method="POST" action="{{ route('logout') }}">
+                        @csrf
+                        <x-button variant="secondary">Sign out</x-button>
+                    </form>
+                </div>
             </div>
         </header>
 

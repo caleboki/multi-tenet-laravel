@@ -2,8 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MembershipStatus;
+use App\Enums\OrganizationStatus;
 use App\Models\Membership;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -11,25 +12,29 @@ use Illuminate\View\View;
 class DashboardController extends Controller
 {
     /**
-     * Send the user to their organization, or list the organizations they can open.
+     * Send the user to their organization, or list the organizations they can open
+     * and the join requests they are waiting on.
      */
     public function __invoke(Request $request): RedirectResponse|View
     {
         $user = $request->user();
 
         $memberships = $user->memberships()
-            ->active()
-            ->whereHas('organization', fn (Builder $organization) => $organization->active())
             ->with('organization')
-            ->get();
+            ->get()
+            ->sortBy(fn (Membership $membership): string => $membership->organization->name);
 
-        if ($user->hasVerifiedEmail() && $memberships->count() === 1) {
-            return redirect()->route('orgs.show', $memberships->first()->organization);
+        $activeMemberships = $memberships->filter(fn (Membership $membership): bool => $membership->isActive()
+            && $membership->organization->status === OrganizationStatus::Active);
+
+        if ($user->hasVerifiedEmail() && $activeMemberships->count() === 1) {
+            return redirect()->route('orgs.show', $activeMemberships->first()->organization);
         }
 
         return view('dashboard', [
             'user' => $user,
-            'memberships' => $memberships->sortBy(fn (Membership $membership): string => $membership->organization->name),
+            'memberships' => $activeMemberships,
+            'joinRequests' => $memberships->filter(fn (Membership $membership): bool => $membership->status === MembershipStatus::Pending),
         ]);
     }
 }

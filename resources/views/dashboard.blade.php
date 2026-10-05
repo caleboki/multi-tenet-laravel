@@ -32,4 +32,24 @@
             </ul>
         @endif
     </section>
+
+    @if ($joinRequests->isNotEmpty())
+        <section aria-labelledby="join-requests-heading" class="flex flex-col gap-3">
+            <h2 id="join-requests-heading" class="text-lg font-semibold">Your join requests</h2>
+
+            <ul class="flex flex-col divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-900">
+                @foreach ($joinRequests as $joinRequest)
+                    <li class="flex items-center justify-between gap-4 px-4 py-3">
+                        <span class="font-medium">{{ $joinRequest->organization->name }}</span>
+
+                        @if ($user->hasVerifiedEmail())
+                            <x-status-badge tone="warning">Awaiting approval</x-status-badge>
+                        @else
+                            <x-status-badge tone="warning">Verify your email first</x-status-badge>
+                        @endif
+                    </li>
+                @endforeach
+            </ul>
+        </section>
+    @endif
 @endsection

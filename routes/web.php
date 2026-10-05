@@ -2,14 +2,21 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InvitationAcceptanceController;
+use App\Http\Controllers\JoinController;
 use App\Http\Controllers\Org\InvitationController;
+use App\Http\Controllers\Org\JoinRequestController;
 use App\Http\Controllers\Org\MemberController;
 use App\Http\Controllers\Org\OrganizationHomeController;
+use App\Http\Controllers\Org\SettingsController;
+use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/join/{signupToken}', [JoinController::class, 'show'])->name('join.show');
+Route::post('/join/{signupToken}', [JoinController::class, 'store'])->middleware('throttle:public-forms')->name('join.store');
 
 Route::middleware('throttle:public-forms')->group(function () {
     Route::get('/invitations/{token}', [InvitationAcceptanceController::class, 'show'])->name('invitations.show');
@@ -18,6 +25,7 @@ Route::middleware('throttle:public-forms')->group(function () {
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
 });
 
 Route::prefix('orgs/{organization:slug}')
@@ -35,6 +43,12 @@ Route::prefix('orgs/{organization:slug}')
             Route::post('/invitations', [InvitationController::class, 'store'])->name('invitations.store');
             Route::post('/invitations/{invitation}/resend', [InvitationController::class, 'resend'])->whereNumber('invitation')->name('invitations.resend');
             Route::delete('/invitations/{invitation}', [InvitationController::class, 'destroy'])->whereNumber('invitation')->name('invitations.destroy');
+
+            Route::get('/join-requests', [JoinRequestController::class, 'index'])->name('join-requests.index');
+            Route::post('/join-requests/{membership}/approve', [JoinRequestController::class, 'approve'])->whereNumber('membership')->name('join-requests.approve');
+            Route::delete('/join-requests/{membership}', [JoinRequestController::class, 'destroy'])->whereNumber('membership')->name('join-requests.destroy');
+
+            Route::get('/settings', [SettingsController::class, 'edit'])->name('settings.edit');
         });
     });
 

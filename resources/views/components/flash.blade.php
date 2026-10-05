@@ -1,6 +1,8 @@
 @php
     $messages = [
         'verification-link-sent' => 'A new verification link has been sent to your email address.',
+        'profile-information-updated' => 'Your details have been saved.',
+        'password-updated' => 'Your password has been changed.',
     ];
 
     $status = session('status');

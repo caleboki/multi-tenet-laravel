@@ -89,6 +89,15 @@ class Membership extends Model
     }
 
     /**
+     * Determine whether the membership is a join request that administrators can review:
+     * pending, from a person who has verified their email (R9).
+     */
+    public function isAwaitingApproval(): bool
+    {
+        return $this->status === MembershipStatus::Pending && $this->user->hasVerifiedEmail();
+    }
+
+    /**
      * Determine whether the membership is active.
      */
     public function isActive(): bool

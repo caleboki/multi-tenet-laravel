@@ -4,6 +4,7 @@ namespace App\Actions\Accounts;
 
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -14,7 +15,9 @@ class CreateAccount
      * an organization sign-up link, or an accepted invitation.
      *
      * Accounts created from an invitation are already verified, because the link was
-     * delivered to the address. Every other account must verify its email address.
+     * delivered to the address. Every other account must verify its email address. The
+     * Registered event, which sends the verification email, fires only once any
+     * surrounding transaction commits, so a rolled-back sign-up sends nothing.
      *
      * @param  array{name: string, email: string, password: string, phone?: ?string}  $attributes
      *
@@ -41,7 +44,7 @@ class CreateAccount
         ])->save();
 
         if (! $verified) {
-            event(new Registered($user));
+            DB::afterCommit(fn () => event(new Registered($user)));
         }
 
         return $user;
