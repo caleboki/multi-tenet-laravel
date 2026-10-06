@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DemoInboxController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\JoinController;
 use App\Http\Controllers\Operator\OrganizationController as OperatorOrganizationController;
@@ -23,6 +24,14 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::prefix('demo/inbox')
+    ->name('demo.inbox.')
+    ->middleware('demo')
+    ->group(function () {
+        Route::get('/', [DemoInboxController::class, 'index'])->name('index');
+        Route::get('/{demoEmail}', [DemoInboxController::class, 'show'])->whereNumber('demoEmail')->name('show');
+    });
 
 Route::get('/organizations/request', [OrganizationRequestController::class, 'create'])->name('organization-requests.create');
 Route::post('/organizations/request', [OrganizationRequestController::class, 'store'])->middleware('throttle:public-forms')->name('organization-requests.store');

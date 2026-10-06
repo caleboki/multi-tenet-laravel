@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActiveMembership;
+use App\Http\Middleware\EnsureDemoMode;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'member' => EnsureActiveMembership::class,
+            'demo' => EnsureDemoMode::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -712,6 +712,15 @@ file has exactly the organization's filtered members.
 - [x] T142 Show a signed-in person why they can't ask to join, instead of a button that errors. *Done: `RequestToJoin::refusalFor()` exposes the existing FR-034 rules and `handle()` uses it. The sign-up page shows the reason (waiting for approval, inactive, or already invited) with a link to the dashboard. JoinPageTest covers it.*
 
 330 tests pass. Mutation checks confirmed the tests catch the header leak, a menu shown to non-administrators, `start` ignoring the last organization, the sign-up page hiding the reason, and warnings shown as success messages. Smoke-tested against the Sail app. A visual check in Chrome wasn't possible, because the browser extension wasn't connected.
+
+---
+
+## Demo mode for the public demo (requested by the user)
+
+**Purpose**: Let an interviewer try every flow on a Forge-hosted demo without real email. The user chose not to set up Resend, because it needs a verified domain.
+
+- [x] T143 Add a demo inbox, switched on by `DEMO_MODE` (config/demo.php, off by default and pinned off in phpunit.xml). *Done: the StoreDemoEmail listener saves every email from Laravel's `MessageSent` event to `demo_emails` (new model, migration and factory) and keeps the newest 200. `/demo/inbox` (`demo.inbox.index` and `demo.inbox.show`, behind the new `demo` middleware, so it's 404 when off) lists them newest first with a recipient filter. Each email shows its links as buttons and its plain-text body, escaped. A banner on every page links to it. tests/Feature/Demo/DemoInboxTest.php. Mutation checks confirm the off switches and pruning are tested.*
+- [x] T144 List the demo accounts on the sign-in page, with one-click sign-in buttons, only in demo mode. *Done: the accounts are in config/demo.php and match DatabaseSeeder. tests/Feature/Demo/DemoAccountsTest.php.*
 ---
 
 ## Dependencies & Execution Order

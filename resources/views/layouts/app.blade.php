@@ -14,6 +14,8 @@
             Skip to content
         </a>
 
+        <x-demo-banner />
+
         <header class="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3">
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-1">

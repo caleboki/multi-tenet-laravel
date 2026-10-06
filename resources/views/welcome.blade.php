@@ -14,6 +14,8 @@
             Skip to content
         </a>
 
+        <x-demo-banner />
+
         <header class="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
             <div class="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-4 px-4 py-3">
                 <a href="{{ url('/') }}" class="rounded-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">

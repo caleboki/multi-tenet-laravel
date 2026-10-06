@@ -14,7 +14,9 @@
             Skip to content
         </a>
 
-        <main id="main" class="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-12">
+        <x-demo-banner />
+
+        <main id="main" class="mx-auto flex min-h-screen @yield('width', 'max-w-md') flex-col justify-center gap-6 px-4 py-12">
             <a href="{{ url('/') }}" class="self-center rounded-sm text-lg font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600">
                 {{ config('app.name') }}
             </a>
