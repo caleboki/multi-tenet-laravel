@@ -2,6 +2,8 @@
 
 namespace Tests\Feature\JoinRequests;
 
+use App\Enums\MembershipStatus;
+use App\Models\Invitation;
 use App\Models\Membership;
 use App\Models\Organization;
 use App\Models\User;
@@ -46,7 +48,43 @@ class JoinPageTest extends TestCase
         $response = $this->actingAs($member)->get(route('join.show', $organization->signup_token));
 
         $response->assertRedirect(route('orgs.show', $organization));
-        $response->assertSessionHas('status', "You're already a member of Food Bank North.");
+        $response->assertSessionHas('info', "You're already a member of Food Bank North.");
+    }
+
+    /**
+     * @return array<string, array{MembershipStatus, string}>
+     */
+    public static function membershipsThatCannotAskAgain(): array
+    {
+        return [
+            'waiting for approval' => [MembershipStatus::Pending, 'Your request to join Food Bank North is already waiting for approval.'],
+            'inactive' => [MembershipStatus::Inactive, 'Your membership of Food Bank North is inactive. Ask its administrator to reactivate you.'],
+        ];
+    }
+
+    #[DataProvider('membershipsThatCannotAskAgain')]
+    public function test_signed_in_person_who_cannot_ask_again_sees_why_instead_of_a_button(MembershipStatus $status, string $message): void
+    {
+        $organization = Organization::factory()->active()->create(['name' => 'Food Bank North']);
+        $user = User::factory()->create();
+        Membership::factory()->for($organization)->for($user)->volunteer()->create(['status' => $status]);
+
+        $response = $this->actingAs($user)->get(route('join.show', $organization->signup_token));
+
+        $response->assertSeeText($message);
+        $response->assertDontSeeText('Request to join');
+    }
+
+    public function test_signed_in_person_with_an_invitation_is_told_to_use_it(): void
+    {
+        $organization = Organization::factory()->active()->create(['name' => 'Food Bank North']);
+        $user = User::factory()->create(['email' => 'grace@example.test']);
+        Invitation::factory()->for($organization)->create(['email' => 'grace@example.test']);
+
+        $response = $this->actingAs($user)->get(route('join.show', $organization->signup_token));
+
+        $response->assertSeeText("You've already been invited to join Food Bank North.");
+        $response->assertDontSeeText('Request to join');
     }
 
     public function test_unknown_link_says_it_is_no_longer_valid(): void

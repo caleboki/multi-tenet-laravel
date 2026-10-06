@@ -28,15 +28,22 @@
         <x-error-alert field="membership" />
 
         @auth
-            <form method="POST" action="{{ route('join.store', $signupToken) }}" class="flex flex-col gap-4">
-                @csrf
+            @if ($refusal !== null)
+                <div role="status" class="flex flex-col gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-950 dark:border-indigo-900 dark:bg-indigo-950 dark:text-indigo-100">
+                    <p>{{ $refusal }}</p>
+                    <a href="{{ route('dashboard') }}" class="self-start rounded-sm font-medium underline focus-visible:outline-2 focus-visible:outline-indigo-600">Go to your dashboard</a>
+                </div>
+            @else
+                <form method="POST" action="{{ route('join.store', $signupToken) }}" class="flex flex-col gap-4">
+                    @csrf
 
-                <p class="text-sm">
-                    You're signed in as {{ auth()->user()->name }} ({{ auth()->user()->email }}).
-                </p>
+                    <p class="text-sm">
+                        You're signed in as {{ auth()->user()->name }} ({{ auth()->user()->email }}).
+                    </p>
 
-                <x-button>Request to join</x-button>
-            </form>
+                    <x-button>Request to join</x-button>
+                </form>
+            @endif
         @else
             <p class="text-sm">
                 Already have an account?

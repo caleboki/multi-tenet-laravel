@@ -53,7 +53,7 @@ class TenantIsolationTest extends TestCase
     public function test_guest_is_redirected_to_login_from_every_signed_in_route(): void
     {
         $records = $this->recordsIn(Organization::factory()->active()->create());
-        $routes = $this->routesNamed(['orgs.', 'operator.', 'dashboard', 'profile.edit']);
+        $routes = $this->routesNamed(['orgs.', 'operator.', 'dashboard', 'start', 'profile.edit']);
         $unexpectedResponses = [];
 
         foreach ($routes as $route) {

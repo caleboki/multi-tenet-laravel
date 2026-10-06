@@ -35,6 +35,13 @@
                         </a>
                     @endcan
 
+                    <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-1 rounded-sm text-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
+                        Dashboard
+                        @if ($waitingCount > 0)
+                            <span class="inline-flex min-w-5 justify-center rounded-full bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-950 no-underline dark:bg-amber-900 dark:text-amber-100">{{ $waitingCount }}<span class="sr-only"> waiting</span></span>
+                        @endif
+                    </a>
+
                     <a href="{{ route('profile.edit') }}" class="rounded-sm text-sm font-medium text-indigo-700 underline focus-visible:outline-2 focus-visible:outline-indigo-600 dark:text-indigo-300">
                         Profile
                     </a>
@@ -46,6 +53,10 @@
                 </div>
             </div>
         </header>
+
+        @if ($organizationMenu)
+            <x-org-menu :organization="$organizationMenu['organization']" :join-request-count="$organizationMenu['joinRequestCount']" />
+        @endif
 
         <main id="main" class="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-8">
             <x-flash />

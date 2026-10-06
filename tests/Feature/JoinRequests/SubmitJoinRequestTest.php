@@ -50,7 +50,7 @@ class SubmitJoinRequestTest extends TestCase
         Notification::assertNothingSentTo($administrator);
     }
 
-    public function test_verifying_after_asking_to_join_leads_to_the_dashboard_not_back_to_the_sign_up_page(): void
+    public function test_verifying_after_asking_to_join_leads_to_the_start_page_not_back_to_the_sign_up_page(): void
     {
         $organization = Organization::factory()->active()->create();
         Notification::fake();
@@ -64,7 +64,7 @@ class SubmitJoinRequestTest extends TestCase
 
         $response = $this->get($verificationUrl);
 
-        $response->assertRedirect(route('dashboard').'?verified=1');
+        $response->assertRedirect(route('start').'?verified=1');
     }
 
     public function test_guest_must_confirm_they_are_an_adult(): void

@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\MembershipRole;
 use Database\Factories\InvitationFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -47,6 +49,18 @@ class Invitation extends Model
     public function invitedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'invited_by_id');
+    }
+
+    /**
+     * Scope the query to the unexpired invitations sent to the user's email address, from
+     * organizations that are active, so the person can accept them now.
+     */
+    #[Scope]
+    protected function openFor(Builder $query, User $user): void
+    {
+        $query->where('email', $user->email)
+            ->where('expires_at', '>', now())
+            ->whereHas('organization', fn (Builder $organization) => $organization->active());
     }
 
     /**

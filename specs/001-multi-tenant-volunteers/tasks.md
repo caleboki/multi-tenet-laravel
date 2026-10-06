@@ -695,6 +695,23 @@ file has exactly the organization's filtered members.
 - [x] T134 Decide whether phone numbers like `+44 7700 900123` keep the formula prefix in exports. R11 prefixes every cell starting with `+`, so international numbers export as `'+44…`. Excel hides the quote, but other tools may show it.
   *Decided: keep the prefix. A phone number like `+44 7700 900123` is exactly what the rule protects: Excel reads a cell starting with `+` as a formula, so without the apostrophe it shows an error instead of the number. The apostrophe makes Excel keep the text and isn't displayed. tests/Unit/Roster/WriteRosterCsvTest.php already pins the behavior for a `+` phone number.*
 
+
+---
+
+## UX improvements (after Phase 9)
+
+**Purpose**: Items 1–8 of the post-build UX review, requested by the user. Tests were written first, as in every phase.
+
+- [x] T135 Name the app. *Done: `APP_NAME=Multi-Tenant-Laravel` (the user's choice) in .env and .env.example. The header, page titles and email sender name follow it. The sender address is still `hello@example.com`.*
+- [x] T136 Replace Laravel's starter page with a landing page (resources/views/welcome.blade.php): what the app does, Sign in or Go to your dashboard, Request an organization, and three steps. *Done: tests/Feature/WelcomePageTest.php.*
+- [x] T137 Add app-styled error pages: resources/views/errors/404, 419, 429 and 500. The 500 page uses the guest layout because the app layout queries the database. *Done: also fixed a leak the new 404 exposed. A non-member's 404 for an organization URL rendered the header's "current organization" from the route. The layout composer now names the route's organization only when the person is an active member (`isOwnOrganization()`, which reuses `OrganizationPolicy::view`, so suspended organizations still show). tests/Feature/ErrorPagesTest.php covers the pages and the leak.*
+- [x] T138 Give messages a tone. *Done: resources/views/components/flash.blade.php shows `status` (success), `info` and `warning` (role="alert") with a `data-tone` attribute. "Already a member" and "verify your email to send your request" are `info`. An expired invitation and an organization that isn't open are `warning`. tests/Feature/FlashMessageTest.php.*
+- [x] T139 Add a Copy button for the sign-up link on the settings page. *Done: progressive enhancement in resources/js/app.js. The button starts `hidden` and appears only when the clipboard API exists, and a status line announces the result. Assets rebuilt in Sail.*
+- [x] T140 Add an organization menu (Home, Roster, Invite volunteer, Join requests (n), Import, Settings) to every organization page for administrators. *Done: resources/views/components/org-menu.blade.php, rendered by layouts/app when the layout composer's `organizationMenu()` finds the user manages the route's organization. The current section has `aria-current="page"`. The old admin block on the organization home is gone. tests/Feature/Membership/OrganizationMenuTest.php.*
+- [x] T141 Stop hiding waiting items behind the dashboard redirect. *Done: the new `start` route (StartController) is Fortify's `home` and keeps FR-022's sign-in redirect. `dashboard` now always shows the page. The header's Dashboard link shows a count of open invitations, pending join requests and pending organization requests (`Invitation::openFor()` scope, shared with the dashboard). Recorded in contracts/routes.md. OrganizationSwitchingTest, AuthenticationTest, EmailVerificationTest and SubmitJoinRequestTest now expect `start`, and TenantIsolationTest's guest sweep includes it.*
+- [x] T142 Show a signed-in person why they can't ask to join, instead of a button that errors. *Done: `RequestToJoin::refusalFor()` exposes the existing FR-034 rules and `handle()` uses it. The sign-up page shows the reason (waiting for approval, inactive, or already invited) with a link to the dashboard. JoinPageTest covers it.*
+
+330 tests pass. Mutation checks confirmed the tests catch the header leak, a menu shown to non-administrators, `start` ignoring the last organization, the sign-up page hiding the reason, and warnings shown as success messages. Smoke-tested against the Sail app. A visual check in Chrome wasn't possible, because the browser extension wasn't connected.
 ---
 
 ## Dependencies & Execution Order

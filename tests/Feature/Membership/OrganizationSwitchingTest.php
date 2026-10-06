@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Membership;
 
+use App\Models\Invitation;
 use App\Models\Membership;
 use App\Models\Organization;
 use App\Models\User;
@@ -38,14 +39,14 @@ class OrganizationSwitchingTest extends TestCase
         $this->assertSame($organization->id, $user->fresh()->last_organization_id);
     }
 
-    public function test_dashboard_opens_the_last_organization_when_it_is_still_open(): void
+    public function test_start_opens_the_last_organization_when_it_is_still_open(): void
     {
         $user = User::factory()->create();
         $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
         $lastOrganization = $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
         $user->forceFill(['last_organization_id' => $lastOrganization->id])->save();
 
-        $response = $this->actingAs($user)->get(route('dashboard'));
+        $response = $this->actingAs($user)->get(route('start'));
 
         $response->assertRedirect(route('orgs.show', $lastOrganization));
     }
@@ -75,13 +76,13 @@ class OrganizationSwitchingTest extends TestCase
      * @param  Closure(User): Organization  $createLastOrganization
      */
     #[DataProvider('lastOrganizationsThatAreNoLongerOpen')]
-    public function test_dashboard_falls_back_to_the_only_open_organization(Closure $createLastOrganization): void
+    public function test_start_falls_back_to_the_only_open_organization(Closure $createLastOrganization): void
     {
         $user = User::factory()->create();
         $onlyOpenOrganization = $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
         $user->forceFill(['last_organization_id' => $createLastOrganization($user)->id])->save();
 
-        $response = $this->actingAs($user)->get(route('dashboard'));
+        $response = $this->actingAs($user)->get(route('start'));
 
         $response->assertRedirect(route('orgs.show', $onlyOpenOrganization));
     }
@@ -183,6 +184,63 @@ class OrganizationSwitchingTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertSeeText('Current organization: No organization selected');
+    }
+
+    public function test_start_shows_the_dashboard_when_there_is_no_organization_to_open(): void
+    {
+        $user = User::factory()->create();
+        $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
+        $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
+
+        $response = $this->actingAs($user)->get(route('start'));
+
+        $response->assertRedirect(route('dashboard'));
+    }
+
+    public function test_start_shows_the_dashboard_to_someone_who_has_not_verified_their_email(): void
+    {
+        $user = User::factory()->unverified()->create();
+        $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
+
+        $response = $this->actingAs($user)->get(route('start'));
+
+        $response->assertRedirect(route('dashboard'));
+    }
+
+    public function test_dashboard_stays_open_for_someone_with_one_organization(): void
+    {
+        $user = User::factory()->create();
+        $organization = $this->activeMembershipIn(Organization::factory()->active()->create(['name' => 'Food Bank North']), $user);
+        $user->forceFill(['last_organization_id' => $organization->id])->save();
+
+        $response = $this->actingAs($user)->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSeeInOrder(['Your organizations', route('orgs.show', $organization)]);
+    }
+
+    public function test_header_counts_what_is_waiting_for_the_person(): void
+    {
+        $user = User::factory()->create(['email' => 'grace@example.test']);
+        $organization = $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
+        Invitation::factory()->for(Organization::factory()->active())->create(['email' => 'grace@example.test']);
+        Membership::factory()->for(Organization::factory()->active())->for($user)->volunteer()->pending()->create();
+        Organization::factory()->pending()->for($user, 'requester')->create();
+
+        $response = $this->actingAs($user)->get(route('orgs.show', $organization));
+
+        $response->assertSeeText('Dashboard 3 waiting');
+    }
+
+    public function test_header_shows_no_count_when_nothing_is_waiting(): void
+    {
+        $user = User::factory()->create();
+        $organization = $this->activeMembershipIn(Organization::factory()->active()->create(), $user);
+
+        $response = $this->actingAs($user)->get(route('orgs.show', $organization));
+
+        $response->assertSeeText('Dashboard');
+        $response->assertDontSeeText('waiting');
     }
 
     private function activeMembershipIn(Organization $organization, User $user): Organization

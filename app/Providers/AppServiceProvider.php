@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Enums\MembershipStatus;
+use App\Enums\OrganizationStatus;
+use App\Models\Invitation;
 use App\Models\Membership;
 use App\Models\Organization;
 use App\Models\User;
@@ -51,6 +54,8 @@ class AppServiceProvider extends ServiceProvider
             $view->with([
                 'openMemberships' => $openMemberships,
                 'currentOrganization' => $this->currentOrganization($request, $openMemberships),
+                'organizationMenu' => $this->organizationMenu($request),
+                'waitingCount' => $this->waitingCount($request->user()),
             ]);
         });
     }
@@ -79,9 +84,12 @@ class AppServiceProvider extends ServiceProvider
     /**
      * Get the organization the header names as current (FR-023).
      *
-     * Inside an organization's pages it is the organization in the URL. Elsewhere it
-     * is the organization the user last worked in, if they can still open it. Operator
-     * pages also name an organization in the URL, but that is not the user's own.
+     * Inside an organization's pages it is the organization in the URL, but only when the
+     * person is one of its active members. A non-member's 404 page is rendered with the
+     * organization still in the route, and naming it there would reveal that it exists
+     * (FR-004). Operator pages also name an organization in the URL, but it isn't the
+     * user's own. Elsewhere it is the organization the user last worked in, if they can
+     * still open it.
      *
      * @param  Collection<int, Membership>  $openMemberships
      */
@@ -89,12 +97,62 @@ class AppServiceProvider extends ServiceProvider
     {
         $organization = $request->route('organization');
 
-        if ($request->routeIs('orgs.*') && $organization instanceof Organization) {
+        if ($request->routeIs('orgs.*') && $organization instanceof Organization && $this->isOwnOrganization($request->user(), $organization)) {
             return $organization;
         }
 
         return $openMemberships
             ->first(fn (Membership $membership): bool => $membership->organization_id === $request->user()?->last_organization_id)
             ?->organization;
+    }
+
+    /**
+     * Determine whether the user is an active member of the organization, including one
+     * that is suspended, whose page tells its members so.
+     */
+    private function isOwnOrganization(?User $user, Organization $organization): bool
+    {
+        if ($user === null) {
+            return false;
+        }
+
+        $access = Gate::forUser($user)->inspect('view', $organization);
+
+        return $access->allowed() || $access->code() === 'organization-suspended';
+    }
+
+    /**
+     * Get the administration menu for the organization in the URL, when the user manages it.
+     *
+     * @return array{organization: Organization, joinRequestCount: int}|null
+     */
+    private function organizationMenu(Request $request): ?array
+    {
+        $organization = $request->route('organization');
+        $user = $request->user();
+
+        if (! $request->routeIs('orgs.*') || ! $organization instanceof Organization || $user === null || Gate::forUser($user)->denies('manageMembers', $organization)) {
+            return null;
+        }
+
+        return [
+            'organization' => $organization,
+            'joinRequestCount' => $organization->memberships()->awaitingApproval()->count(),
+        ];
+    }
+
+    /**
+     * Count what is waiting for the user on their dashboard: invitations they can accept,
+     * their join requests, and their organization requests awaiting review.
+     */
+    private function waitingCount(?User $user): int
+    {
+        if ($user === null) {
+            return 0;
+        }
+
+        return Invitation::query()->openFor($user)->count()
+            + $user->memberships()->where('status', MembershipStatus::Pending)->count()
+            + Organization::query()->whereBelongsTo($user, 'requester')->where('status', OrganizationStatus::Pending)->count();
     }
 }

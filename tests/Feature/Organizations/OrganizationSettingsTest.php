@@ -24,6 +24,17 @@ class OrganizationSettingsTest extends TestCase
         $response->assertSee('value="'.route('join.show', $organization->signup_token).'"', false);
     }
 
+    public function test_offers_a_copy_button_for_the_sign_up_link(): void
+    {
+        $organization = Organization::factory()->active()->create();
+        $administrator = $this->administratorOf($organization);
+
+        $response = $this->actingAs($administrator)->get(route('orgs.settings.edit', $organization));
+
+        $response->assertSee('data-copy-target="signup_link"', false);
+        $response->assertSeeText('Copy link');
+    }
+
     public function test_updates_the_name_and_contact_email_and_keeps_the_slug(): void
     {
         $organization = Organization::factory()->active()->create(['name' => 'Food Bank North', 'slug' => 'food-bank-north']);

@@ -7,23 +7,19 @@ use App\Enums\OrganizationStatus;
 use App\Models\Invitation;
 use App\Models\Membership;
 use App\Models\Organization;
-use App\Models\User;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     /**
-     * Open the organization the user works in, or let them choose one (FR-021, FR-022).
+     * Show the person's organizations and everything waiting for them (FR-021).
      *
-     * When nothing opens automatically, the page lists the organizations the user can
-     * open, suspended ones they can't, and the invitations, join requests and
-     * organization requests they are waiting on.
+     * The page lists the organizations they can open, suspended ones they can't, and
+     * the invitations, join requests and organization requests they are waiting on. It
+     * never redirects: opening the last organization after sign-in is StartController's job.
      */
-    public function __invoke(Request $request): RedirectResponse|View
+    public function __invoke(Request $request): View
     {
         $user = $request->user();
 
@@ -33,23 +29,14 @@ class DashboardController extends Controller
             ->sortBy(fn (Membership $membership): string => $membership->organization->name);
 
         $activeMemberships = $memberships->filter(fn (Membership $membership): bool => $membership->isActive());
-        $openMemberships = $activeMemberships->filter(fn (Membership $membership): bool => $membership->organization->status === OrganizationStatus::Active);
-
-        $organizationToOpen = $user->hasVerifiedEmail() ? $this->organizationToOpen($user, $openMemberships) : null;
-
-        if ($organizationToOpen !== null) {
-            return redirect()->route('orgs.show', $organizationToOpen);
-        }
 
         return view('dashboard', [
             'user' => $user,
-            'memberships' => $openMemberships,
+            'memberships' => $activeMemberships->filter(fn (Membership $membership): bool => $membership->organization->status === OrganizationStatus::Active),
             'suspendedMemberships' => $activeMemberships->filter(fn (Membership $membership): bool => $membership->organization->status === OrganizationStatus::Suspended),
             'joinRequests' => $memberships->filter(fn (Membership $membership): bool => $membership->status === MembershipStatus::Pending),
             'invitations' => Invitation::query()
-                ->where('email', $user->email)
-                ->where('expires_at', '>', now())
-                ->whereHas('organization', fn (Builder $organization) => $organization->active())
+                ->openFor($user)
                 ->with('organization')
                 ->get()
                 ->sortBy(fn (Invitation $invitation): string => $invitation->organization->name),
@@ -59,22 +46,5 @@ class DashboardController extends Controller
                 ->orderBy('name')
                 ->get(),
         ]);
-    }
-
-    /**
-     * Pick the organization to open: the one the user last worked in if they can still
-     * open it, otherwise their only organization.
-     *
-     * @param  Collection<int, Membership>  $openMemberships
-     */
-    private function organizationToOpen(User $user, Collection $openMemberships): ?Organization
-    {
-        $lastMembership = $openMemberships->first(fn (Membership $membership): bool => $membership->organization_id === $user->last_organization_id);
-
-        if ($lastMembership !== null) {
-            return $lastMembership->organization;
-        }
-
-        return $openMemberships->count() === 1 ? $openMemberships->first()->organization : null;
     }
 }

@@ -28,7 +28,7 @@ with session errors.
 
 | Method | URI | Name | Middleware | Notes |
 |---|---|---|---|---|
-| GET/POST | `/login` | `login` | guest, `throttle:login` | Email is lowercased. Redirects to `dashboard`. |
+| GET/POST | `/login` | `login` | guest, `throttle:login` | Email is lowercased. Redirects to `start`. |
 | POST | `/logout` | `logout` | auth | |
 | GET/POST | `/forgot-password` | `password.request` / `password.email` | guest | Always shows "If an account exists, we've emailed a link" (no account enumeration). |
 | GET | `/reset-password/{token}` | `password.reset` | guest | |
@@ -60,7 +60,8 @@ All three entry points take the same **account fields** when the person is signe
 
 | Method | URI | Name | Middleware | Behaviour |
 |---|---|---|---|---|
-| GET | `/dashboard` | `dashboard` | auth | Where Fortify sends people after sign-in (`home`). Redirects to the last organization if it's still accessible, or to the only active one. Otherwise shows a chooser: active organizations, suspended ones (not clickable), pending invitations (with an Accept button for verified users), join requests and organization requests, and the "verify your email" banner (FR-021, FR-022, edge cases). |
+| GET | `/start` | `start` | auth | Where Fortify sends people after sign-in and email verification (`home`). Opens the last organization if it's still accessible, otherwise the only active one, otherwise redirects to `dashboard` (FR-022). Unverified people always go to `dashboard`. |
+| GET | `/dashboard` | `dashboard` | auth | Always shows the page, with no redirect. It lists active organizations, suspended ones (not clickable), pending invitations (with an Accept button for verified users), join requests and organization requests, and the "verify your email" banner (FR-021, edge cases). The header's Dashboard link shows how many invitations and requests are waiting. |
 | GET | `/profile` | `profile.edit` | auth | Name, phone and password forms posting to the Fortify routes above. |
 | POST | `/dashboard/invitations/{invitation}` | `dashboard.invitations.accept` | auth, verified, `can:accept,invitation` | The Accept button on the dashboard's pending invitations (T133). Only the person the invitation was sent to may accept. Anyone else gets 404, so other people's invitations are never revealed. An expired invitation, or one to an organization that isn't active, returns to the dashboard with an explanation. Otherwise the membership is created or reactivated as `active`, the invitation is deleted, and the person is sent to `orgs.show`. |
 

@@ -85,13 +85,13 @@ class InvitationAcceptanceController extends Controller
         if ($invitation->isExpired()) {
             return redirect()
                 ->route('dashboard')
-                ->with('status', "That invitation has expired. Ask the organization's administrator to send a new one.");
+                ->with('warning', "That invitation has expired. Ask the organization's administrator to send a new one.");
         }
 
         if ($invitation->organization->status !== OrganizationStatus::Active) {
             return redirect()
                 ->route('dashboard')
-                ->with('status', "That organization isn't open right now, so the invitation can't be accepted.");
+                ->with('warning', "That organization isn't open right now, so the invitation can't be accepted.");
         }
 
         $acceptInvitation->acceptAs($invitation, $request->user());

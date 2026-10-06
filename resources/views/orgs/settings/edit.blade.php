@@ -51,6 +51,11 @@
             onfocus="this.select()"
         />
 
+        <div class="flex flex-wrap items-center gap-3">
+            <x-button type="button" variant="secondary" data-copy-target="signup_link" hidden>Copy link</x-button>
+            <span role="status" data-copy-status class="text-sm text-zinc-600 dark:text-zinc-400"></span>
+        </div>
+
         <form method="POST" action="{{ route('orgs.signup-link.store', $organization) }}" class="flex flex-col gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-800">
             @csrf
             <p class="text-sm text-zinc-600 dark:text-zinc-400">Creating a new link stops the current one working straight away.</p>

@@ -61,8 +61,8 @@ class OrganizationRequestController extends Controller
 
         $request->session()->forget('url.intended');
 
-        return redirect()->route('dashboard')->with('status', $user->hasVerifiedEmail()
-            ? "Your request for {$organization->name} has been sent to the platform operators."
-            : "Verify your email address to send your request for {$organization->name}.");
+        return $user->hasVerifiedEmail()
+            ? redirect()->route('dashboard')->with('status', "Your request for {$organization->name} has been sent to the platform operators.")
+            : redirect()->route('dashboard')->with('info', "Verify your email address to send your request for {$organization->name}.");
     }
 }

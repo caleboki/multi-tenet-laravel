@@ -19,17 +19,18 @@ class JoinController extends Controller
     /**
      * Show the organization's sign-up page (FR-025).
      *
-     * An active member is sent straight to the organization. A signed-out visitor who
-     * chooses to sign in is brought back here afterwards (FR-026).
+     * An active member is sent straight to the organization. A signed-in person who
+     * can't ask again sees why instead of the button. A signed-out visitor who chooses
+     * to sign in is brought back here afterwards (FR-026).
      */
-    public function show(Request $request, string $signupToken): View|RedirectResponse
+    public function show(Request $request, string $signupToken, RequestToJoin $requestToJoin): View|RedirectResponse
     {
         $organization = $this->organizationFor($signupToken);
 
         if ($organization !== null && Gate::allows('view', $organization)) {
             return redirect()
                 ->route('orgs.show', $organization)
-                ->with('status', "You're already a member of {$organization->name}.");
+                ->with('info', "You're already a member of {$organization->name}.");
         }
 
         if ($request->user() === null) {
@@ -39,6 +40,9 @@ class JoinController extends Controller
         return view('join.show', [
             'organization' => $organization,
             'signupToken' => $signupToken,
+            'refusal' => $request->user() !== null && $organization?->acceptsSignups()
+                ? $requestToJoin->refusalFor($organization, $request->user())
+                : null,
         ]);
     }
 
@@ -77,9 +81,9 @@ class JoinController extends Controller
 
         $request->session()->forget('url.intended');
 
-        return redirect()->route('dashboard')->with('status', $user->hasVerifiedEmail()
-            ? "Your request to join {$organization->name} has been sent to its administrators."
-            : "Verify your email address to send your request to join {$organization->name}.");
+        return $user->hasVerifiedEmail()
+            ? redirect()->route('dashboard')->with('status', "Your request to join {$organization->name} has been sent to its administrators.")
+            : redirect()->route('dashboard')->with('info', "Verify your email address to send your request to join {$organization->name}.");
     }
 
     /**

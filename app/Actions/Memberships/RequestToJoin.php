@@ -26,8 +26,11 @@ class RequestToJoin
     public function handle(Organization $organization, User $user): Membership
     {
         $membership = $user->membershipIn($organization);
+        $refusal = $this->refusalFor($organization, $user, $membership);
 
-        $this->ensureNotAlreadyInvolved($organization, $user, $membership);
+        if ($refusal !== null) {
+            throw ValidationException::withMessages(['membership' => $refusal]);
+        }
 
         if ($membership === null) {
             $membership = $user->memberships()->make();
@@ -56,14 +59,16 @@ class RequestToJoin
     }
 
     /**
-     * Refuse a person who is already in the roster or has an open invitation (FR-034).
-     * A person who left may ask again.
+     * Explain why the person can't ask to join, or return null when they can (FR-034).
      *
-     * @throws ValidationException
+     * People already in the roster, or with an open invitation, are refused. A person
+     * who left may ask again. The sign-up page shows this before anyone clicks.
      */
-    private function ensureNotAlreadyInvolved(Organization $organization, User $user, ?Membership $membership): void
+    public function refusalFor(Organization $organization, User $user, ?Membership $membership = null): ?string
     {
-        $message = match ($membership?->status) {
+        $membership ??= $user->membershipIn($organization);
+
+        return match ($membership?->status) {
             MembershipStatus::Active => "You're already a member of {$organization->name}.",
             MembershipStatus::Pending => "Your request to join {$organization->name} is already waiting for approval.",
             MembershipStatus::Inactive => "Your membership of {$organization->name} is inactive. Ask its administrator to reactivate you.",
@@ -71,9 +76,5 @@ class RequestToJoin
                 ? "You've already been invited to join {$organization->name}. Use the link in your invitation email."
                 : null,
         };
-
-        if ($message !== null) {
-            throw ValidationException::withMessages(['membership' => $message]);
-        }
     }
 }

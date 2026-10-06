@@ -17,6 +17,7 @@ use App\Http\Controllers\Org\SettingsController;
 use App\Http\Controllers\Org\SignupLinkController;
 use App\Http\Controllers\OrganizationRequestController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StartController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -35,6 +36,7 @@ Route::middleware('throttle:public-forms')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('/start', StartController::class)->name('start');
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
 });

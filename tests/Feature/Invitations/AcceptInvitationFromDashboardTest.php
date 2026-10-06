@@ -77,7 +77,7 @@ class AcceptInvitationFromDashboardTest extends TestCase
         $response = $this->actingAs($invitee)->post(route('dashboard.invitations.accept', $invitation));
 
         $response->assertRedirect(route('dashboard'));
-        $response->assertSessionHas('status', "That invitation has expired. Ask the organization's administrator to send a new one.");
+        $response->assertSessionHas('warning', "That invitation has expired. Ask the organization's administrator to send a new one.");
         $this->assertNull($invitee->membershipIn($organization));
         $this->assertModelExists($invitation);
     }
@@ -91,7 +91,7 @@ class AcceptInvitationFromDashboardTest extends TestCase
         $response = $this->actingAs($invitee)->post(route('dashboard.invitations.accept', $invitation));
 
         $response->assertRedirect(route('dashboard'));
-        $response->assertSessionHas('status', "That organization isn't open right now, so the invitation can't be accepted.");
+        $response->assertSessionHas('warning', "That organization isn't open right now, so the invitation can't be accepted.");
         $this->assertNull($invitee->membershipIn($organization));
     }
 
